@@ -3,7 +3,7 @@
 
 import { fourLetterWords } from "./four-letter-words.js";
 
-document.addEventListener("DOMContentLoaded", function () {
+
   const restartButton = document.getElementById("restartButton");
   const submitButton = document.getElementById("submitButton");
   const giveUpButton = document.getElementById("giveUpButton");
@@ -493,4 +493,3 @@ document.addEventListener("DOMContentLoaded", function () {
   closeInfoButton.addEventListener("click", event => {
     ToggleClass(instructionsEl, "hide", true);
   })
-});

@@ -85,8 +85,8 @@
     <script>
       var scriptElem1 = document.createElement('script');
       var scriptElem2 = document.createElement('script');
-      scriptElem1.addAttribute("type", "module");
-      scriptElem2.addAttribute("type", "module");
+      scriptElem1.setAttribute("type", "module");
+      scriptElem2.setAttribute("type", "module");
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         // local live reload port
         scriptElem1.src = 'four-letter-words.js';
@@ -96,8 +96,8 @@
         scriptElem1.src = 'Four-Word-Puzzle-Game/four-letter-words.js';
         scriptElem2.src = 'Four-Word-Puzzle-Game/game.js';
       }
-      document.body.appendChild(scriptElem1);
-      document.body.appendChild(scriptElem2);
+      document.head.appendChild(scriptElem1);
+      document.head.appendChild(scriptElem2);
     </script>
   </body>
 </html>
