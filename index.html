@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Four Word Puzzle Game</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script type="module" src="/four-letter-words.js"></script>
+    <script type="module" src="/game.js"></script>
+    <script src="https://kit.fontawesome.com/5140f02e0a.js" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div id="game-container">
+      <header id="header">
+        <div id="title">
+          <h1>Word Weaver</h1>
+        </div>
+        <i id="infoButton" class="fa-solid fa-circle-info"></i>
+      </header>
+      <div id="gameboard">
+        <div id="challenge">You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.</div>
+        <div id="timer">0:00</div>
+        <form id="game-form">
+          <div class="row1">
+            <input type="text" class="corner" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+            <input type="text" class="corner" maxlength="1" readonly />
+          </div>
+          <div class="row2">
+            <input type="text" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+          </div>
+          <div class="row3">
+            <input type="text" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+          </div>
+          <div class="row4">
+            <input type="text" class="corner" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+            <input type="text" maxlength="1" readonly />
+            <input type="text" class="corner" maxlength="1" readonly />
+          </div>
+        </form>
+        <div class="availableLettersWrap">
+          <h3 class="av_title">Available letters:</h3>
+          <div id="availableLettersDiv"></div>
+        </div>
+        <div id="button-field">
+          <div id="buttons_row1">
+            <button id="submitButton">Submit</button>
+            <button id="hintButton">Hint (6)</button>
+            <button id="clearButton">Clear All</button>
+          </div>
+        </div>
+        <div id="wrongAnswer"></div>
+        <div id="result">
+          <div>
+            <h2>You got it!</h2>
+            <p id="resultWords"></p>
+          </div>
+          <p>
+            You guessed the correct words, in a time of <span id="resultTime"></span>, using
+            <span id="resultHints"></span> hints!
+          </p>
+          <div>
+            <div class="result_buttons">
+              <button id="shareButton">Share this game</button>
+              <button id="restartButton">New Game</button>
+            </div>
+            <div id="share_url"></div>
+          </div>
+        </div>
+      </div>
+      <div id="instructions" class="hide">
+        <i id="i-close-button" class="fa-solid fa-xmark"></i>
+        <h2 class="instructions-title">Instructions</h2>
+        <div class="instructions-body"><p>Guess the four words using the available letters. 
+          The horizontal words read from left to right. The vertical words read from top to bottom. 
+          You can select a letter by clicking on it or by pressing the corresponding letter on your keyboard.</p>
+          <p>After completing a round, you can share it to a friend and challenge them to beat your time!   </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
