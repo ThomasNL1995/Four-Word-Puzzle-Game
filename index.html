@@ -4,8 +4,12 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Four Word Puzzle Game</title>
+    <title>Word Weaver</title>
     <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script src="https://kit.fontawesome.com/5140f02e0a.js" crossorigin="anonymous"></script>
   </head>
   <body>
@@ -17,7 +21,10 @@
         <i id="infoButton" class="fa-solid fa-circle-info"></i>
       </header>
       <div id="gameboard">
-        <div id="challenge">You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.</div>
+        <div id="challenge">
+          You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of
+          <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
+        </div>
         <div id="timer">0:00</div>
         <form id="game-form">
           <div class="row1">
@@ -54,6 +61,7 @@
         </div>
         <div id="wrongAnswer"></div>
         <div id="result">
+          <i id="r-close-button" class="fa-solid fa-xmark"></i>
           <div>
             <h2>You got it!</h2>
             <p id="resultWords"></p>
@@ -74,27 +82,30 @@
       <div id="instructions" class="hide">
         <i id="i-close-button" class="fa-solid fa-xmark"></i>
         <h2 class="instructions-title">Instructions</h2>
-        <div class="instructions-body"><p>Guess the four words using the available letters. 
-          The horizontal words read from left to right. The vertical words read from top to bottom. 
-          You can select a letter by clicking on it or by pressing the corresponding letter on your keyboard.</p>
-          <p>After completing a round, you can share it to a friend and challenge them to beat your time!   </p>
+        <div class="instructions-body">
+          <p>
+            Guess the four words using the available letters. The horizontal words read from left to right. The vertical
+            words read from top to bottom. You can select a letter by clicking on it or by pressing the corresponding
+            letter on your keyboard.
+          </p>
+          <p>After completing a round, you can share it to a friend and challenge them to beat your time!</p>
         </div>
       </div>
     </div>
 
     <script>
-      var scriptElem1 = document.createElement('script');
-      var scriptElem2 = document.createElement('script');
+      var scriptElem1 = document.createElement("script");
+      var scriptElem2 = document.createElement("script");
       scriptElem1.setAttribute("type", "module");
       scriptElem2.setAttribute("type", "module");
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
         // local live reload port
-        scriptElem1.src = 'four-letter-words.js';
-        scriptElem2.src = 'game.js';
+        scriptElem1.src = "four-letter-words.js";
+        scriptElem2.src = "game.js";
       } else {
         // GitHub Pages setup
-        scriptElem1.src = 'four-letter-words.js';
-        scriptElem2.src = 'game.js';
+        scriptElem1.src = "four-letter-words.js";
+        scriptElem2.src = "game.js";
       }
       document.head.appendChild(scriptElem1);
       document.head.appendChild(scriptElem2);

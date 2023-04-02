@@ -19,6 +19,7 @@ import { fourLetterWords } from "./four-letter-words.js";
   const wrongAnswer = document.getElementById("wrongAnswer");
   const resultElement = document.getElementById("result");
   const resultTime = document.getElementById("resultTime");
+  const resultCloseButton = document.getElementById("r-close-button");
   const timer = document.getElementById("timer");
   const resultWords = document.getElementById("resultWords");
   const resultHints = document.getElementById("resultHints");
@@ -55,7 +56,6 @@ import { fourLetterWords } from "./four-letter-words.js";
       this.isAvailable = param.isAvailable;
       this.isUsed = param.isUsed;
       this.isSelected = param.isSelected;
-      this.eventListenerCreated = param.eventListenerCreated;
     }
   }
 
@@ -277,6 +277,7 @@ import { fourLetterWords } from "./four-letter-words.js";
                 letter.filledBy.isUsed = false;
                 letter.filledBy = "";
                 letter.inputElement.value = "";
+                console.log(letterObjectsArray);
               }
               //if a letter is selected, place it
               if (selectedLetter) {
@@ -348,6 +349,8 @@ import { fourLetterWords } from "./four-letter-words.js";
       if (!letter.isCorner && !letter.isFilledByHint) {
         letter.inputElement.value = "";
         letter.value = "";
+        letter.filledBy = "";
+        letter.filledAt = "";
         letter.isFilled = false;
         letter.isUsed = false;
       }
@@ -492,4 +495,7 @@ import { fourLetterWords } from "./four-letter-words.js";
   })
   closeInfoButton.addEventListener("click", event => {
     ToggleClass(instructionsEl, "hide", true);
+  })
+  resultCloseButton.addEventListener("click", event => {
+    ToggleClass(resultElement, "show", false);
   })

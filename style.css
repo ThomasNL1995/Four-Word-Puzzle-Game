@@ -345,7 +345,7 @@ input[type="text"].filledByHint {
   pointer-events: none;
 }
 
-#i-close-button {
+#i-close-button, #r-close-button {
   position: absolute;
   top: 0;
   right: 0;
