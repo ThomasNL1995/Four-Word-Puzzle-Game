@@ -1,6 +1,7 @@
 //npx http-server -c-1
 //http://192.168.1.235:8080/?data=MTQsNixPSUxTLERJTlQsT1dFRCxTRUNU
 import { fourLetterWords } from "./four-letter-words.js";
+import { dailyWords } from "./dailyWords.js";
 const restartButton = document.getElementById("restartButton");
 const submitButton = document.getElementById("submitButton");
 const hintButton = document.getElementById("hintButton");
@@ -9,15 +10,17 @@ const shareButton = document.getElementById("shareButton");
 const infoButton = document.getElementById("infoButton");
 const closeInfoButton = document.getElementById("i-close-button");
 const instructionsEl = document.getElementById("instructions");
+const menuButton = document.getElementById("menuButton");
+const closeMenuButton = document.getElementById("menu-close-button");
+const menuElement = document.getElementById("menu");
 const form = document.querySelector("form");
 const inputElements = form.querySelectorAll('input[type="text"]');
-const avLettersEl = document.getElementById("availableLettersDiv");
+const availableLettersElement = document.getElementById("availableLettersDiv");
 const wrongAnswer = document.getElementById("wrongAnswer");
 const resultElement = document.getElementById("result");
-;
 const resultTime = document.getElementById("resultTime");
 const resultCloseButton = document.getElementById("r-close-button");
-const timer = document.getElementById("timer");
+const mainTimer = document.getElementById("timer");
 const resultWords = document.getElementById("resultWords");
 const resultHints = document.getElementById("resultHints");
 const shareUrlElement = document.getElementById("share_url");
@@ -30,10 +33,10 @@ let challengeName;
 let challengeTime;
 let challengeHints;
 let pickedWords = ["test", "ever", "tape", "tear"];
-let combinedWord;
-let remainingLetters;
+let combinedWord = null;
+let remainingLetters = null;
 let isGameRunning = false;
-let selectedLetter;
+let selectedLetter = null;
 let letterObjectsArray = [];
 let firstGame = true;
 let hintsUsed = 0;
@@ -46,7 +49,7 @@ class LetterObject {
         this.index = props.index;
         this.letter = props.letter;
         this.inputElement = props.inputElement;
-        this.p_tag = props.p_tag;
+        this.letterElement = props.letterElement;
         this.isCorner = props.isCorner;
         this.isFilled = props.isFilled;
         this.isFilledByHint = props.isFilledByHint;
@@ -80,9 +83,20 @@ function GetFourRandomWords() {
         return GetFourRandomWords();
     }
 }
+function GetDailyWords() {
+    const startDate = new Date("4-6-2023");
+    const oneDay = 24 * 60 * 60 * 1000; // number of milliseconds in one day
+    const today = new Date();
+    const diffDays = Math.round((today.getTime() - startDate.getTime()) / oneDay);
+    const index = diffDays;
+    return dailyWords[index];
+}
 function CombineWords(words) {
-    let result = words[0] + words[2].charAt(1) + words[3].charAt(1) + words[2].charAt(2) + words[3].charAt(2) + words[1];
-    return result;
+    if (words) {
+        let result = words[0] + words[2].charAt(1) + words[3].charAt(1) + words[2].charAt(2) + words[3].charAt(2) + words[1];
+        return result;
+    }
+    return null;
 }
 function FormatTime(seconds) {
     const formatMinutes = Math.floor(seconds / 60)
@@ -143,9 +157,9 @@ function ParseClasses() {
     letterObjectsArray.forEach((obj) => {
         ToggleClass(obj.inputElement, "filled", obj.isFilled);
         ToggleClass(obj.inputElement, "filledByHint", obj.isFilledByHint);
-        ToggleClass(obj.p_tag, "used", obj.isUsed);
-        ToggleClass(obj.p_tag, "selected", obj.isSelected);
-        ToggleClass(obj.p_tag, "filledByHint", obj.isFilledByHint);
+        ToggleClass(obj.letterElement, "used", obj.isUsed);
+        ToggleClass(obj.letterElement, "selected", obj.isSelected);
+        ToggleClass(obj.letterElement, "filledByHint", obj.isFilledByHint);
     });
 }
 const SelectByKeyPress = (event) => {
@@ -159,25 +173,28 @@ const SelectByKeyPress = (event) => {
         }
     }
 };
-function startGame() {
+function initGame(gametype) { }
+function startGame(gametype = "random") {
     if (!isGameRunning) {
         console.log("starting game...");
         isGameRunning = true;
         cleanUpGame();
-        wrongAnswer.innerHTML = "";
-        ToggleClass(resultElement, "show", false);
-        if (randomGame) {
-            pickedWords = GetFourRandomWords();
-            ToggleClass(challengeEl, "hide", true);
-        }
-        else {
-            challengeHintsEl.textContent = challengeHints.toString();
-            challengeTimeEl.textContent = FormatTime(challengeTime);
-            ToggleClass(challengeEl, "hide", false);
+        switch (gametype) {
+            case "random":
+                pickedWords = GetFourRandomWords();
+                break;
+            case "challenge":
+                challengeHintsEl.textContent = challengeHints.toString();
+                challengeTimeEl.textContent = FormatTime(challengeTime);
+                ToggleClass(challengeEl, "hide", false);
+                break;
+            case "daily":
+                pickedWords = GetDailyWords();
+                break;
         }
         console.log("picked words are: " + pickedWords);
         combinedWord = CombineWords(pickedWords);
-        avLettersEl.innerHTML = "";
+        availableLettersElement.innerHTML = "";
         elapsedTime = 0;
         startTimer();
         if (firstGame) {
@@ -189,7 +206,7 @@ function startGame() {
                     index: index,
                     letter: combinedWord[index],
                     inputElement: input,
-                    p_tag: null,
+                    letterElement: null,
                     isCorner: corners.includes(index),
                     isFilled: false,
                     isFilledByHint: false,
@@ -200,6 +217,7 @@ function startGame() {
             });
         }
         else {
+            //sort the array and reset everything
             letterObjectsArray.sort((a, b) => a.index - b.index);
             letterObjectsArray.forEach((letter, index) => {
                 letter.filledBy = null;
@@ -208,7 +226,7 @@ function startGame() {
                 letter.index = index;
                 letter.isCorner = corners.includes(index);
                 letter.inputElement = inputElements[index];
-                letter.p_tag = null;
+                letter.letterElement = null;
                 letter.isFilled = false;
                 letter.isFilledByHint = false;
                 letter.isAvailable = false;
@@ -221,31 +239,27 @@ function startGame() {
         console.log(letterObjectsArray);
         //add the corners and available letters to their spot
         for (const obj of letterObjectsArray) {
-            if (obj.isCorner) {
+            if (obj.isCorner && obj.inputElement) {
                 obj.inputElement.value = obj.letter;
             }
             else {
-                const p = document.createElement("p");
-                p.textContent = obj.letter;
-                p.classList.add("letters");
-                avLettersEl.appendChild(p);
-                obj.p_tag = p;
+                const letterDiv = document.createElement("div");
+                letterDiv.textContent = obj.letter;
+                letterDiv.classList.add("letters");
+                availableLettersElement.appendChild(letterDiv);
+                obj.letterElement = letterDiv;
             }
         }
-        //randomize the letters
-        // for (let i = 8; i >= 0; i--) {
-        //   avLettersEl.appendChild(avLettersEl.children[(Math.random() * i) | 0]);
-        // }
         //event handler for selected by key
         document.addEventListener("keydown", SelectByKeyPress);
         letterObjectsArray.forEach((letter) => {
-            if (!letter.isCorner) {
-                letter.p_tag.addEventListener("click", (event) => {
+            if (!letter.isCorner && letter.letterElement) {
+                letter.letterElement.addEventListener("click", (event) => {
                     SelectLetter(letter);
                 });
             }
             // make letter placeable
-            if (firstGame) {
+            if (firstGame && letter.inputElement) {
                 letter.inputElement.addEventListener("click", (event) => {
                     if (!letter.isCorner && !letter.isFilledByHint) {
                         //if there is a letter, return it
@@ -351,28 +365,35 @@ function checkWin() {
         }
     }
 }
+function RestartGame() {
+    startGame("random");
+}
 function cleanUpGame() {
     combinedWord = "";
+    wrongAnswer.innerHTML = "";
     remainingLetters = null;
     hintsUsed = 0;
     hintButton.removeAttribute("disabled");
     hintButton.innerHTML = "Hint (6)";
-    avLettersEl.innerHTML = "";
+    availableLettersElement.innerHTML = "";
     inputElements.forEach((input) => {
-        input.value = "";
+        const inputElement = input;
+        inputElement.value = "";
         if (!input.classList.contains("corner")) {
             input.classList.remove("filled");
             input.classList.remove("filledByHint");
         }
     });
-    document.removeEventListener("click", SelectByKeyPress);
+    document.removeEventListener("keydown", SelectByKeyPress);
+    ToggleClass(resultElement, "show", false);
+    ToggleClass(challengeEl, "hide", true);
 }
 function shareGame() {
     const dataStr = elapsedTime + "," + hintsUsed + "," + pickedWords.join(",");
     // encode the string to Base64
     const encodedData = btoa(dataStr);
     // construct the URL with the encoded data
-    const urlName = window.location.origin + "/?data=" + encodedData;
+    const urlName = window.location.origin + "/challenge.html?data=" + encodedData;
     const shareUrl = new URL(urlName);
     console.log(urlName);
     const searchprops = new URLSearchParams(shareUrl.search);
@@ -413,35 +434,56 @@ function stopTimer() {
 function updateTimer() {
     const now = new Date(); // get the current time
     elapsedTime = Math.floor((now.getTime() - startTime.getTime()) / 1000); // calculate the elapsed time in seconds
-    timer.textContent = FormatTime(elapsedTime);
+    mainTimer.textContent = FormatTime(elapsedTime);
 }
 // ******************* //
-// Get the current URL
-const url = new URL(window.location.href);
-// Parse the query string
-const urlProps = new URLSearchParams(url.search);
-// Check if the 'data' propseter is present and has a value
-if (urlProps.has("data")) {
-    const data = urlProps.get("data");
-    // Split the comma-separated values into an array
-    const dataSet = atob(data).split(",");
-    challengeTime = Number(dataSet[0]);
-    challengeHints = Number(dataSet[1]);
-    pickedWords = dataSet.splice(2);
-    randomGame = false;
+//if we are on the daily page, get the daily words
+if (window.location.pathname === "/daily.html") {
+    startGame("daily");
+}
+else if (window.location.pathname === "/challenge.html") {
+    // Get the current URL
+    const url = new URL(window.location.href);
+    // Parse the query string
+    const urlProps = new URLSearchParams(url.search);
+    // Check if the 'data' propseter is present and has a value
+    if (urlProps.has("data")) {
+        const data = urlProps.get("data");
+        // Split the comma-separated values into an array
+        let dataSet = [];
+        if (data) {
+            dataSet = atob(data).split(",");
+        }
+        challengeTime = Number(dataSet[0]);
+        challengeHints = Number(dataSet[1]);
+        pickedWords = dataSet.splice(2);
+        startGame("challenge");
+    }
+    else {
+        // Generate a random game
+        console.log("incorrect challengeLink");
+        startGame("random");
+    }
 }
 else {
-    // Generate a random game
-    // ...
-    console.log("normal game");
-    randomGame = true;
+    startGame("random");
 }
-startGame();
-restartButton.addEventListener("click", startGame);
+restartButton.addEventListener("click", RestartGame);
 submitButton.addEventListener("click", checkWin);
 hintButton.addEventListener("click", giveHint);
 clearButton.addEventListener("click", clearAll);
 shareButton.addEventListener("click", shareGame);
+menuButton.addEventListener("click", (event) => {
+    if (menuElement.classList.contains("hide")) {
+        ToggleClass(menuElement, "hide", false);
+    }
+    else {
+        ToggleClass(menuElement, "hide", true);
+    }
+});
+closeMenuButton.addEventListener("click", (event) => {
+    ToggleClass(menuElement, "hide", true);
+});
 infoButton.addEventListener("click", (event) => {
     ToggleClass(instructionsEl, "hide", false);
 });
@@ -451,4 +493,18 @@ closeInfoButton.addEventListener("click", (event) => {
 resultCloseButton.addEventListener("click", (event) => {
     ToggleClass(resultElement, "show", false);
 });
-//# sourceMappingURL=game.js.map
+// const dailyWords = [];
+// // call getfourwords function 1000 times
+// for (let i = 0; i < 1000; i++) {
+//   dailyWords.push(GetFourRandomWords());
+// }
+// // convert dailyWords array to a string
+// const data = `const dailyWords = ${JSON.stringify(dailyWords)};`;
+// // create a new Blob object with the data
+// const blob = new Blob([data], {type: 'text/javascript'});
+// // create a link element to download the file
+// const link = document.createElement('a');
+// link.href = URL.createObjectURL(blob);
+// link.download = 'daily_words.js';
+// // click the link to initiate download
+// link.click();

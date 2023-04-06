@@ -34,21 +34,19 @@ input {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
-  max-width: 600px;
-  margin: 0 auto;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 50px;
+  border-bottom: solid white 3px;
 }
 #title {
-  font-size: 0.8em;
+  font-size: 0.8em !important;
   text-transform: uppercase;
-  padding: 10px 0px;
-  padding-bottom: 0px;
-  margin: 0 50px;
 }
 
-#infoButton {
+#infoButton,
+#menuButton {
   font-size: 24px;
-  margin-top: 10px;
   cursor: pointer;
 }
 
@@ -186,7 +184,7 @@ input {
   border-radius: 5px;
   font-size: 13px;
   opacity: 0;
-  transition: all .3s ease-in-out;
+  transition: all 0.3s ease-in-out;
 }
 #share_url.show {
   opacity: 1;
@@ -314,7 +312,8 @@ input[type="text"].filledByHint {
   display: none;
 }
 
-#challengeHints, #challengeTime {
+#challengeHints,
+#challengeTime {
   font-weight: 600;
 }
 
@@ -345,7 +344,9 @@ input[type="text"].filledByHint {
   pointer-events: none;
 }
 
-#i-close-button, #r-close-button {
+#i-close-button,
+#r-close-button,
+#menu-close-button {
   position: absolute;
   top: 0;
   right: 0;
@@ -354,4 +355,53 @@ input[type="text"].filledByHint {
   border: none;
   font-size: 20px;
   cursor: pointer;
+}
+
+#menu {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  color: white;
+  text-decoration: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 53px;
+  left: 0%;
+  background: #323232;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  box-sizing: border-box;
+  opacity: 1;
+  transition: all 0.3s ease-in-out;
+}
+
+#menu-close-button {
+  margin: 20px;
+}
+
+#menu .menu-title {
+  font-size: 1.6em;
+}
+
+a {
+  color: white;
+  text-decoration: none;
+}
+
+#menu.hide {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-55%);
+}
+
+@media only screen and (min-width: 600px) {
+  #menu {
+    max-width: 400px;
+  }
+  #menu.hide {
+    transform: translate(-55%);
+  }
 }
