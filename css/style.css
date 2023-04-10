@@ -373,6 +373,7 @@ input[type="text"].filledByHint {
   background: #323232;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   padding: 20px;
+  padding-left: 40px;
   box-sizing: border-box;
   opacity: 1;
   transition: all 0.3s ease-in-out;
@@ -384,13 +385,18 @@ input[type="text"].filledByHint {
 
 #menu .menu-title {
   font-size: 1.6em;
+  margin-bottom: 10px;
 }
 
 a {
   color: white;
   text-decoration: none;
 }
-
+.menu-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 #menu.hide {
   opacity: 0;
   pointer-events: none;
@@ -399,7 +405,7 @@ a {
 
 @media only screen and (min-width: 600px) {
   #menu {
-    max-width: 400px;
+    max-width: 300px;
   }
   #menu.hide {
     transform: translate(-55%);

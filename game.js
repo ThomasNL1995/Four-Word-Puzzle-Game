@@ -6,13 +6,13 @@ const restartButton = document.getElementById("restartButton");
 const submitButton = document.getElementById("submitButton");
 const hintButton = document.getElementById("hintButton");
 const clearButton = document.getElementById("clearButton");
-const shareButton = document.getElementById("shareButton");
 const infoButton = document.getElementById("infoButton");
 const closeInfoButton = document.getElementById("i-close-button");
 const instructionsEl = document.getElementById("instructions");
 const menuButton = document.getElementById("menuButton");
 const closeMenuButton = document.getElementById("menu-close-button");
 const menuElement = document.getElementById("menu");
+const mainTimer = document.getElementById("timer");
 const form = document.querySelector("form");
 const inputElements = form.querySelectorAll('input[type="text"]');
 const availableLettersElement = document.getElementById("availableLettersDiv");
@@ -20,18 +20,18 @@ const wrongAnswer = document.getElementById("wrongAnswer");
 const resultElement = document.getElementById("result");
 const resultTime = document.getElementById("resultTime");
 const resultCloseButton = document.getElementById("r-close-button");
-const mainTimer = document.getElementById("timer");
 const resultWords = document.getElementById("resultWords");
 const resultHints = document.getElementById("resultHints");
 const shareUrlElement = document.getElementById("share_url");
+const shareButton = document.getElementById("shareButton");
 const challengeEl = document.getElementById("challenge");
 const challengeNameEl = document.getElementById("challengeName");
 const challengeTimeEl = document.getElementById("challengeTime");
 const challengeHintsEl = document.getElementById("challengeHints");
 const corners = [0, 3, 8, 11];
-let challengeName;
-let challengeTime;
-let challengeHints;
+let challengeName = "";
+let challengeTime = 0;
+let challengeHints = 0;
 let pickedWords = ["test", "ever", "tape", "tear"];
 let combinedWord = null;
 let remainingLetters = null;
@@ -58,6 +58,12 @@ class LetterObject {
         this.isSelected = props.isSelected;
     }
 }
+let gameState = {
+    gameStarted: false,
+    letterObjectsArray: [],
+    hintsUsed: 0,
+    timer: 0,
+};
 function GetFourRandomWords() {
     let word1 = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
     let word2 = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
@@ -79,7 +85,6 @@ function GetFourRandomWords() {
         return [word1, word2, word3, word4];
     }
     else {
-        console.log("no word combo found");
         return GetFourRandomWords();
     }
 }
@@ -97,6 +102,12 @@ function CombineWords(words) {
         return result;
     }
     return null;
+}
+function setGameState() {
+    gameState.letterObjectsArray = letterObjectsArray;
+    gameState.hintsUsed = hintsUsed;
+    gameState.timer = elapsedTime;
+    localStorage.setItem("gameState", JSON.stringify(gameState));
 }
 function FormatTime(seconds) {
     const formatMinutes = Math.floor(seconds / 60)
@@ -173,7 +184,87 @@ const SelectByKeyPress = (event) => {
         }
     }
 };
-function initGame(gametype) { }
+function MakeLettersPlaceable(letter) {
+    // make letter placeable
+    if (firstGame && letter.inputElement) {
+        letter.inputElement.addEventListener("click", (event) => {
+            if (!letter.isCorner && !letter.isFilledByHint) {
+                //if there is a letter, return it
+                if (letter.filledBy) {
+                    letter.isFilled = false;
+                    letter.filledBy.isUsed = false;
+                    letter.filledBy = null;
+                    letter.inputElement.value = "";
+                    console.log(letterObjectsArray);
+                }
+                //if a letter is selected, place it
+                if (selectedLetter) {
+                    letter.filledBy = selectedLetter;
+                    letter.inputElement.value = selectedLetter.letter;
+                    letter.isFilled = true;
+                    selectedLetter.filledAt = letter;
+                    selectedLetter.isSelected = false;
+                    selectedLetter.isUsed = true;
+                    selectedLetter = null;
+                    form.classList.remove("letterSelected");
+                }
+            }
+            ParseClasses();
+        });
+    }
+}
+function CreateLetterObjectsArray() {
+    //create letter objects and put them in the array
+    inputElements.forEach((input, index) => {
+        letterObjectsArray.push(new LetterObject({
+            filledBy: null,
+            filledAt: null,
+            index: index,
+            letter: combinedWord[index],
+            inputElement: input,
+            letterElement: null,
+            isCorner: corners.includes(index),
+            isFilled: false,
+            isFilledByHint: false,
+            isAvailable: false,
+            isUsed: false,
+            isSelected: false,
+        }));
+    });
+}
+function ResetLetterObjectsArray() {
+    //sort the array and reset everything
+    letterObjectsArray.sort((a, b) => a.index - b.index);
+    letterObjectsArray.forEach((letter, index) => {
+        letter.filledBy = null;
+        letter.filledAt = null;
+        letter.letter = combinedWord[index];
+        letter.index = index;
+        letter.isCorner = corners.includes(index);
+        letter.inputElement = inputElements[index];
+        letter.letterElement = null;
+        letter.isFilled = false;
+        letter.isFilledByHint = false;
+        letter.isAvailable = false;
+        letter.isUsed = false;
+        letter.isSelected = false;
+    });
+}
+function placeLettersInGame() {
+    //add the corners and available letters to their spot
+    for (const letterObject of letterObjectsArray) {
+        if (letterObject.isCorner && letterObject.inputElement) {
+            letterObject.inputElement.value = letterObject.letter;
+        }
+        else {
+            const letterDiv = document.createElement("div");
+            letterDiv.textContent = letterObject.letter;
+            letterDiv.classList.add("letters");
+            availableLettersElement.appendChild(letterDiv);
+            letterObject.letterElement = letterDiv;
+        }
+    }
+}
 function startGame(gametype = "random") {
     if (!isGameRunning) {
         console.log("starting game...");
@@ -190,66 +281,24 @@ function startGame(gametype = "random") {
                 break;
             case "daily":
                 pickedWords = GetDailyWords();
+                gameState.gameStarted = true;
                 break;
         }
         console.log("picked words are: " + pickedWords);
         combinedWord = CombineWords(pickedWords);
-        availableLettersElement.innerHTML = "";
-        elapsedTime = 0;
         startTimer();
         if (firstGame) {
-            //create letter objects and put them in the array
-            inputElements.forEach((input, index) => {
-                letterObjectsArray.push(new LetterObject({
-                    filledBy: null,
-                    filledAt: null,
-                    index: index,
-                    letter: combinedWord[index],
-                    inputElement: input,
-                    letterElement: null,
-                    isCorner: corners.includes(index),
-                    isFilled: false,
-                    isFilledByHint: false,
-                    isAvailable: false,
-                    isUsed: false,
-                    isSelected: false,
-                }));
-            });
+            CreateLetterObjectsArray();
         }
         else {
-            //sort the array and reset everything
-            letterObjectsArray.sort((a, b) => a.index - b.index);
-            letterObjectsArray.forEach((letter, index) => {
-                letter.filledBy = null;
-                letter.filledAt = null;
-                letter.letter = combinedWord[index];
-                letter.index = index;
-                letter.isCorner = corners.includes(index);
-                letter.inputElement = inputElements[index];
-                letter.letterElement = null;
-                letter.isFilled = false;
-                letter.isFilledByHint = false;
-                letter.isAvailable = false;
-                letter.isUsed = false;
-                letter.isSelected = false;
-            });
+            ResetLetterObjectsArray();
         }
         //randomize array order
         letterObjectsArray = Shuffle(letterObjectsArray);
-        console.log(letterObjectsArray);
         //add the corners and available letters to their spot
-        for (const obj of letterObjectsArray) {
-            if (obj.isCorner && obj.inputElement) {
-                obj.inputElement.value = obj.letter;
-            }
-            else {
-                const letterDiv = document.createElement("div");
-                letterDiv.textContent = obj.letter;
-                letterDiv.classList.add("letters");
-                availableLettersElement.appendChild(letterDiv);
-                obj.letterElement = letterDiv;
-            }
-        }
+        placeLettersInGame();
+        //update gamestate object and write it to localstorage
+        setGameState();
         //event handler for selected by key
         document.addEventListener("keydown", SelectByKeyPress);
         letterObjectsArray.forEach((letter) => {
@@ -258,33 +307,7 @@ function startGame(gametype = "random") {
                     SelectLetter(letter);
                 });
             }
-            // make letter placeable
-            if (firstGame && letter.inputElement) {
-                letter.inputElement.addEventListener("click", (event) => {
-                    if (!letter.isCorner && !letter.isFilledByHint) {
-                        //if there is a letter, return it
-                        if (letter.filledBy) {
-                            letter.isFilled = false;
-                            letter.filledBy.isUsed = false;
-                            letter.filledBy = null;
-                            letter.inputElement.value = "";
-                            console.log(letterObjectsArray);
-                        }
-                        //if a letter is selected, place it
-                        if (selectedLetter) {
-                            letter.filledBy = selectedLetter;
-                            letter.inputElement.value = selectedLetter.letter;
-                            letter.isFilled = true;
-                            selectedLetter.filledAt = letter;
-                            selectedLetter.isSelected = false;
-                            selectedLetter.isUsed = true;
-                            selectedLetter = null;
-                            form.classList.remove("letterSelected");
-                        }
-                    }
-                    ParseClasses();
-                });
-            }
+            MakeLettersPlaceable(letter);
         });
         firstGame = false;
     }
@@ -387,13 +410,15 @@ function cleanUpGame() {
     document.removeEventListener("keydown", SelectByKeyPress);
     ToggleClass(resultElement, "show", false);
     ToggleClass(challengeEl, "hide", true);
+    availableLettersElement.innerHTML = "";
+    elapsedTime = 0;
 }
 function shareGame() {
     const dataStr = elapsedTime + "," + hintsUsed + "," + pickedWords.join(",");
     // encode the string to Base64
     const encodedData = btoa(dataStr);
     // construct the URL with the encoded data
-    const urlName = window.location.origin + "/challenge.html?data=" + encodedData;
+    const urlName = window.location.origin + "/ qchallenge.html?data=" + encodedData;
     const shareUrl = new URL(urlName);
     console.log(urlName);
     const searchprops = new URLSearchParams(shareUrl.search);
