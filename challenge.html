@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Word Weaver - Challenge</title>
+    <title>Word Weaver - Challenged</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
@@ -17,7 +17,7 @@
       <header id="header">
         <i id="menuButton" class="fa-solid fa-bars"></i>
         <div id="title">
-          <a href="./"><h1>Word Weaver - Challenge</h1></a>
+          <a href="./"><h1>Word Weaver</h1></a>
         </div>
         <i id="infoButton" class="fa-solid fa-circle-info"></i>
         <div id="menu" class="hide">
@@ -25,35 +25,21 @@
           <h2 class="menu-title">Gamemodes</h2>
           <div class="menu-body">
             <a href="daily.html">Daily</a>
+            <a href="infinite.html">Infinite</a>
           </div>
         </div>
       </header>
       <div id="gameboard">
+        
         <div id="challenge">
           You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
         </div>
         <div id="timer">0:00</div>
         <form id="game-form">
-          <div class="row1">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
-          </div>
-          <div class="row2">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row3">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row4">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
-          </div>
+          <div id="row1"></div>
+          <div id="row2"></div>
+          <div id="row3"></div>
+          <div id="row4"></div>
         </form>
         <div class="availableLettersWrap">
           <h3 class="av_title">Available letters:</h3>
@@ -94,6 +80,7 @@
           <p>After completing a round, you can share it to a friend and challenge them to beat your time!</p>
         </div>
       </div>
+      
     </div>
     <script src="four-letter-words.js" type="module"></script>
     <script src="dailyWords.js" type="module"></script>
