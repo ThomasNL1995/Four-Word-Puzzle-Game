@@ -88,6 +88,42 @@ let gameState = {
     gameType: "daily",
     pickedWords: [],
 };
+class LetterInputElement {
+    constructor(props) {
+        this.index = props.index;
+        this.inputElement = props.inputElement;
+        this.filledLetter = null;
+        this.onLetterFilled = props.onLetterFilled;
+    }
+    fillLetter(letterElement) {
+        this.filledLetter = letterElement.letter;
+        this.inputElement.value = this.filledLetter;
+        this.onLetterFilled(this);
+    }
+    clearLetter() {
+        this.filledLetter = null;
+        this.inputElement.value = "";
+    }
+}
+class LetterElement {
+    constructor(props) {
+        this.index = props.index;
+        this.letter = props.letter;
+        this.letterElement = props.letterElement;
+        this.isSelected = false;
+        this.onLetterSelected = props.onLetterSelected;
+        this.letterElement.addEventListener("click", () => {
+            this.select();
+        });
+    }
+    select() {
+        this.isSelected = true;
+        this.onLetterSelected(this);
+    }
+    deselect() {
+        this.isSelected = false;
+    }
+}
 function GetFourRandomWords() {
     let word1 = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
     let word2 = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
@@ -691,7 +727,7 @@ function OnLoad() {
         startGame(gametypeEnum.random);
     }
 }
-OnLoad();
+// OnLoad();
 // const dailyWords = [];
 // // call getfourwords function 1000 times
 // for (let i = 0; i < 1000; i++) {

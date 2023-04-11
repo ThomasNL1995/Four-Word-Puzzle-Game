@@ -140,6 +140,68 @@ let gameState: GameState = {
   pickedWords: [],
 };
 
+class LetterInputElement {
+  index: number;
+  inputElement: HTMLInputElement;
+  filledLetter: string | null;
+  onLetterFilled: (input: LetterInputElement) => void;
+
+  constructor(props: {
+    index: number;
+    inputElement: HTMLInputElement;
+    onLetterFilled: (input: LetterInputElement) => void;
+  }) {
+    this.index = props.index;
+    this.inputElement = props.inputElement;
+    this.filledLetter = null;
+    this.onLetterFilled = props.onLetterFilled;
+  }
+
+  fillLetter(letterElement: LetterElement): void {
+    this.filledLetter = letterElement.letter;
+    this.inputElement.value = this.filledLetter;
+    this.onLetterFilled(this);
+  }
+
+  clearLetter(): void {
+    this.filledLetter = null;
+    this.inputElement.value = "";
+  }
+}
+
+class LetterElement {
+  index: number;
+  letter: string;
+  letterElement: HTMLElement;
+  isSelected: boolean;
+  onLetterSelected: (letter: LetterElement) => void;
+
+  constructor(props: {
+    index: number;
+    letter: string;
+    letterElement: HTMLElement;
+    onLetterSelected: (letter: LetterElement) => void;
+  }) {
+    this.index = props.index;
+    this.letter = props.letter;
+    this.letterElement = props.letterElement;
+    this.isSelected = false;
+    this.onLetterSelected = props.onLetterSelected;
+
+    this.letterElement.addEventListener("click", () => {
+      this.select();
+    });
+  }
+
+  select(): void {
+    this.isSelected = true;
+    this.onLetterSelected(this);
+  }
+
+  deselect(): void {
+    this.isSelected = false;
+  }
+}
 
 
 function GetFourRandomWords(): string[] {
@@ -815,7 +877,7 @@ function OnLoad() {
   }
 }
 
-OnLoad();
+// OnLoad();
 
 // const dailyWords = [];
 
