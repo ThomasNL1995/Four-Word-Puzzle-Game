@@ -64,14 +64,14 @@ let currentGametype = gametypeEnum.random;
 class LetterObject {
     constructor(props) {
         this.props = props;
-        this.filledBy = props.filledBy;
-        this.filledAt = props.filledAt;
-        this.filledByIndex = props.filledByIndex;
-        this.filledAtIndex = props.filledAtIndex;
         this.index = props.index;
         this.letter = props.letter;
         this.inputElement = props.inputElement;
         this.letterElement = props.letterElement;
+        this.filledBy = props.filledBy;
+        this.filledAt = props.filledAt;
+        this.filledByIndex = props.filledByIndex;
+        this.filledAtIndex = props.filledAtIndex;
         this.isCorner = props.isCorner;
         this.isFilled = props.isFilled;
         this.isFilledByHint = props.isFilledByHint;
@@ -202,14 +202,14 @@ function CreateLetterObjectsArray() {
     //create letter objects and put them in the array
     inputElements.forEach((input, index) => {
         letterObjectsArray.push(new LetterObject({
-            filledBy: null,
-            filledAt: null,
-            filledAtIndex: null,
-            filledByIndex: null,
             index: index,
             letter: combinedWord[index],
             inputElement: input,
             letterElement: null,
+            filledBy: null,
+            filledAt: null,
+            filledAtIndex: null,
+            filledByIndex: null,
             isCorner: corners.includes(index),
             isFilled: false,
             isFilledByHint: false,
@@ -288,10 +288,12 @@ function MakeLettersPlaceable(letter) {
     // make letter placeable
     if (firstGame && letter.inputElement) {
         letter.inputElement.addEventListener("click", (event) => {
-            console.log(letter);
+            console.dir(letterObjectsArray);
             if (!letter.isCorner && !letter.isFilledByHint) {
                 //if there is a letter, return it
                 if (letter.filledBy !== null) {
+                    letter.filledBy.filledAt = null;
+                    letter.filledBy.filledAtIndex = null;
                     letter.isFilled = false;
                     letter.filledBy.isUsed = false;
                     letter.filledBy = null;
@@ -301,7 +303,6 @@ function MakeLettersPlaceable(letter) {
                 //if a letter is selected, place it
                 if (selectedLetter) {
                     letter.filledBy = selectedLetter;
-                    console.log(letter.filledBy);
                     letter.filledByIndex = selectedLetter.index;
                     letter.inputElement.value = selectedLetter.letter;
                     letter.isFilled = true;
@@ -334,12 +335,6 @@ function placeLettersInGame() {
     });
 }
 function startGame(gametype = gametypeEnum.random) {
-    const gameStateJSON = localStorage.getItem("gameState");
-    let storedGameState = null;
-    if (gameStateJSON) {
-        storedGameState = JSON.parse(gameStateJSON);
-    }
-    console.log(storedGameState);
     if (!isGameRunning) {
         console.log("starting game...");
         isGameRunning = true;
@@ -403,17 +398,19 @@ function resumeGame(storedGameState) {
         combinedWord = CombineWords(pickedWords);
         elapsedTime = storedGameState.timer;
         hintsUsed = storedGameState.hintsUsed;
+        console.log("Stored Game State:");
+        console.log(storedGameState.letterObjectsArray);
         storedGameState.letterObjectsArray.forEach((letterObject) => {
             //create letter objects and put them in the array
             letterObjectsArray.push(new LetterObject({
-                filledBy: null,
-                filledAt: null,
-                filledAtIndex: letterObject.filledAtIndex,
-                filledByIndex: letterObject.filledByIndex,
                 index: letterObject.index,
                 letter: combinedWord[letterObject.index],
                 inputElement: inputElements[letterObject.index],
                 letterElement: null,
+                filledBy: null,
+                filledAt: null,
+                filledAtIndex: letterObject.filledAtIndex,
+                filledByIndex: letterObject.filledByIndex,
                 isCorner: corners.includes(letterObject.index),
                 isFilled: letterObject.isFilled,
                 isFilledByHint: letterObject.isFilledByHint,
@@ -422,32 +419,35 @@ function resumeGame(storedGameState) {
                 isSelected: false,
             }));
         });
+        console.log(letterObjectsArray);
         letterObjectsArray.forEach((letterObject) => {
             if (letterObject.filledByIndex !== null) {
-                letterObject.filledBy = letterObjectsArray[letterObject.filledByIndex];
+                letterObject.filledBy = LetterByIndex(letterObject.filledByIndex);
             }
             if (letterObject.filledAtIndex !== null) {
-                letterObject.filledAt = letterObjectsArray[letterObject.filledAtIndex];
+                letterObject.filledAt = LetterByIndex(letterObject.filledAtIndex);
             }
         });
+        console.log(letterObjectsArray);
         //add the corners and available letters to their spot
         letterObjectsArray.forEach((letterObject) => {
-            if (letterObject.isCorner && letterObject.inputElement) {
+            if (letterObject.isCorner) { //if corner, put the letter in the input
                 letterObject.inputElement.value = letterObject.letter;
             }
-            else if (letterObject.filledBy && letterObject.inputElement) {
-                letterObject.inputElement.value = letterObject.filledBy.letter;
-            }
             else {
-                const letterDiv = document.createElement("div");
-                letterDiv.textContent = letterObject.letter;
-                letterDiv.classList.add("letters");
-                availableLettersElement.appendChild(letterDiv);
-                letterObject.letterElement = letterDiv;
+                if (letterObject.filledBy) { //if filled, put the letter in the input
+                    letterObject.inputElement.value = letterObject.filledBy.letter;
+                }
+                if (!letterObject.isCorner) { //if not corner, put the letter in the available letters
+                    const letterDiv = document.createElement("div");
+                    letterDiv.textContent = letterObject.letter;
+                    letterDiv.classList.add("letters");
+                    availableLettersElement.appendChild(letterDiv);
+                    letterObject.letterElement = letterDiv;
+                }
             }
         });
         ParseClasses();
-        console.log(letterObjectsArray);
         //update gamestate object and write it to localstorage
         setAndStoreGameState();
         //event handler for selected by key
@@ -485,6 +485,9 @@ function giveHint() {
         if (randomLetter.isUsed) {
             randomLetter.filledAt.isFilled = false;
             randomLetter.filledAt.inputElement.value = "";
+            randomLetter.filledAt.filledBy = null;
+            randomLetter.filledAt.filledByIndex = null;
+            randomLetter.filledAt = null;
         }
         //if spot already filled
         if (randomLetter.filledBy) {
@@ -613,7 +616,7 @@ function updateTimer() {
     const now = new Date(); // get the current time
     elapsedTime = Math.floor((now.getTime() - startTime.getTime()) / 1000); // calculate the elapsed time in seconds
     mainTimer.textContent = FormatTime(elapsedTime);
-    setAndStoreGameState();
+    //setAndStoreGameState();
 }
 // ******************* //
 function AddAllButtonEventListeners() {
@@ -653,7 +656,7 @@ function OnLoad() {
         if (gameStateJSON) {
             storedGameState = JSON.parse(gameStateJSON);
         }
-        if (storedGameState) {
+        if (storedGameState && storedGameState.gameType === gametypeEnum.daily) {
             resumeGame(storedGameState);
         }
         else {
