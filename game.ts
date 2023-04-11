@@ -23,6 +23,7 @@ const menuElement = document.getElementById("menu") as HTMLDivElement;
 //PAUSE ELEMENTS
 const pauseButton = document.getElementById("pauseButton") as HTMLButtonElement;
 const pausePopup = document.getElementById("pausePopup") as HTMLDivElement;
+const resumeButton = document.getElementById("resumeButton") as HTMLButtonElement;
 
 //GAMEBOARD ELEMENTS
 const mainTimer = document.getElementById("timer") as HTMLDivElement;
@@ -53,8 +54,10 @@ const challengeTimeEl = document.getElementById("challengeTime") as HTMLSpanElem
 const challengeHintsEl = document.getElementById("challengeHints") as HTMLSpanElement;
 
 // TIMER
-let startTime: Date; // to store the start time
-let elapsedTime = 0; // to store the elapsed time in seconds
+let startTime: Date | undefined = undefined; // to store the start time
+let pauseTime: Date; // to store the time when the timer was paused
+let pausedSeconds = 0; // to store the difference between the paused time and the start time
+let elapsedSeconds = 0; // to store the elapsed time in seconds
 let timerInterval: number; // to store the interval ID for the setInterval function
 
 // GAME VARIABLES
@@ -66,9 +69,7 @@ let pickedWords: string[] | null = ["test", "ever", "tape", "tear"];
 let combinedWord: string | null = null;
 let remainingLetters: LetterObject[] | null = null;
 let isGameRunning = false;
-let selectedLetter_old: LetterObject | null = null;
 let selectedLetter: LetterObject | null = null;
-let letterObjectsArrayO: LetterObject[] = [];
 let firstGame = true;
 let hintsUsed = 0;
 let randomGame = true;
@@ -84,59 +85,9 @@ enum gametypeEnum {
 }
 let currentGametype: gametypeEnum = gametypeEnum.random;
 
-interface LetterObjectProps {
-  index: number;
-  letter: string;
-  inputElement: HTMLInputElement | null;
-  letterElement: HTMLDivElement | null;
-  filledBy: LetterObjectO | null;
-  filledAt: LetterObjectO | null;
-  filledByIndex: number | null;
-  filledAtIndex: number | null;
-  isCorner: boolean;
-  isFilled: boolean;
-  isFilledByHint: boolean;
-  isAvailable: boolean;
-  isUsed: boolean;
-  isSelected: boolean;
-}
-
-class LetterObjectO {
-  constructor(private props: LetterObjectProps) {
-    this.index = props.index;
-    this.letter = props.letter;
-    this.inputElement = props.inputElement;
-    this.letterElement = props.letterElement;
-    this.filledBy = props.filledBy;
-    this.filledAt = props.filledAt;
-    this.filledByIndex = props.filledByIndex;
-    this.filledAtIndex = props.filledAtIndex;
-    this.isCorner = props.isCorner;
-    this.isFilled = props.isFilled;
-    this.isFilledByHint = props.isFilledByHint;
-    this.isAvailable = props.isAvailable;
-    this.isUsed = props.isUsed;
-    this.isSelected = props.isSelected;
-  }
-  index: number;
-  letter: string;
-  inputElement: HTMLInputElement | null;
-  letterElement: HTMLDivElement | null;
-  filledBy: LetterObjectO | null;
-  filledAt: LetterObjectO | null;
-  filledByIndex: number | null;
-  filledAtIndex: number | null;
-  isCorner: boolean;
-  isFilled: boolean;
-  isFilledByHint: boolean;
-  isAvailable: boolean;
-  isUsed: boolean;
-  isSelected: boolean;
-}
-
 interface GameState {
   gameStarted: boolean;
-  letterObjectsArray: LetterObjectO[];
+  letterObjectsArray: LetterObject[];
   hintsUsed: number;
   timer: number;
   gameType: string;
@@ -375,11 +326,12 @@ function setAndStoreGameState() {
   //     })
   //   );
   // });
-  // gameState.hintsUsed = hintsUsed;
-  // gameState.timer = elapsedTime;
-  // gameState.gameType = currentGametype;
-  // gameState.pickedWords = pickedWords!;
-  // localStorage.setItem("gameState", JSON.stringify(gameState));
+  gameState.letterObjectsArray = letterObjectsArray;
+  gameState.hintsUsed = hintsUsed;
+  gameState.timer = elapsedSeconds;
+  gameState.gameType = currentGametype;
+  gameState.pickedWords = pickedWords!;
+  localStorage.setItem("gameState", JSON.stringify(gameState));
 }
 
 function FormatTime(seconds: number) {
@@ -493,7 +445,7 @@ function startGame(gametype: gametypeEnum = gametypeEnum.random) {
     startTimer();
 
     //update gamestate object and write it to localstorage
-    //setAndStoreGameState();
+    setAndStoreGameState();
 
     firstGame = false;
   }
@@ -670,8 +622,29 @@ function checkWin() {
       randomGame = true; //make sure the next game will be random words again
       stopTimer();
       resultHints.textContent = hintsUsed.toString();
-      resultTime.textContent = FormatTime(elapsedTime);
-      resultWords.textContent = `${pickedWords![0]}, ${pickedWords![1]}, ${pickedWords![2]}, ${pickedWords![3]}`;
+      resultTime.textContent = FormatTime(elapsedSeconds);
+      pickedWords!.forEach((word) => { 
+        let resultWord = document.createElement("div");
+        resultWord.classList.add("result-word");
+        let resultWordTitle = document.createElement("div");
+        resultWordTitle.classList.add("result-word-title");
+        resultWordTitle.textContent = word;
+        resultWord.appendChild(resultWordTitle);
+        resultWords.appendChild(resultWord);
+      
+        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && data.length > 0 && data[0].meanings.length > 0 && data[0].meanings[0].definitions.length > 0) {
+            let definition = data[0].meanings[0].definitions[0].definition;
+            let resultWordDefinition = document.createElement("div");
+            resultWordDefinition.classList.add("result-word-definition");
+            resultWordDefinition.textContent = definition;
+            resultWord.appendChild(resultWordDefinition);
+          }
+        });
+      });
+      
       ToggleClass(resultElement, "show", true);
     }
   }
@@ -687,6 +660,15 @@ function PauseGame() {
     stopTimer();
     ToggleClass(pausePopup, "hide", false);
     ToggleClass(mainTimer, "paused", true);
+  }
+}
+
+function resumeGameButton() {
+  if (!isGameRunning) {
+    isGameRunning = true;
+    startTimer();
+    ToggleClass(pausePopup, "hide", true);
+    ToggleClass(mainTimer, "paused", false);
   }
 }
 
@@ -706,11 +688,11 @@ function cleanUpGame() {
   letterObjectsArray = [];
   ToggleClass(resultElement, "show", false);
   ToggleClass(challengeEl, "hide", true);
-  elapsedTime = 0;
+  elapsedSeconds = 0;
 }
 
 function shareGame() {
-  const dataStr = elapsedTime + "," + hintsUsed + "," + pickedWords!.join(",");
+  const dataStr = elapsedSeconds + "," + hintsUsed + "," + pickedWords!.join(",");
 
   // encode the string to Base64
   const encodedData = btoa(dataStr);
@@ -745,20 +727,32 @@ function shareGame() {
       });
   }
 }
+//function with an optional parameter
 
 function startTimer() {
-  startTime = new Date(); // set the start time to the current time
+  //only set startTime if it's not already set
+  if (!startTime) {
+    console.log("new timer");
+    startTime = new Date();
+    pausedSeconds = 0;
+  } else {
+    const now = new Date();
+    pausedSeconds += now.getTime() - pauseTime.getTime();
+    console.log(pausedSeconds);
+  }
   timerInterval = setInterval(updateTimer, 1000); // update the timer every second
 }
 
 function stopTimer() {
   clearInterval(timerInterval); // stop the interval
+  pauseTime = new Date(); // calculate the time that has passed since the timer was started
 }
 
 function updateTimer() {
   const now = new Date(); // get the current time
-  elapsedTime = Math.floor((now.getTime() - startTime.getTime()) / 1000); // calculate the elapsed time in seconds
-  mainTimer.textContent = FormatTime(elapsedTime);
+  //console.log(startTime.getTime(), now.getTime());
+  elapsedSeconds = Math.floor((now.getTime() - startTime!.getTime() - pausedSeconds) / 1000); // calculate the elapsed time in seconds
+  mainTimer.textContent = FormatTime(elapsedSeconds);
   //setAndStoreGameState();
 }
 
@@ -772,6 +766,7 @@ function AddAllButtonEventListeners() {
   shareButton.addEventListener("click", shareGame);
 
   pauseButton.addEventListener("click", PauseGame);
+  resumeButton.addEventListener("click", resumeGameButton);
 
   menuButton.addEventListener("click", (event) => {
     if (menuElement.classList.contains("hide")) {
@@ -817,6 +812,7 @@ function OnLoad() {
     }
     if (storedGameState && storedGameState.gameType === gametypeEnum.daily) {
       //resumeGame(storedGameState);
+      startGame(gametypeEnum.daily);
     } else {
       startGame(gametypeEnum.daily);
     }

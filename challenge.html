@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Word Weaver - Challenged</title>
+    <title>Word Weaver - Challenge</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
@@ -30,12 +30,14 @@
         </div>
       </header>
       <div id="gameboard">
-        
         <div id="challenge">
           You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
         </div>
-        <div id="timer">0:00</div>
         <form id="game-form">
+          <div class="flex-wrapper-row">
+            <div id="timer">0:00</div>
+            <a id="pauseButton">Pause Game<i class="fa-solid fa-pause"></i></a>
+          </div>
           <div id="row1"></div>
           <div id="row2"></div>
           <div id="row3"></div>
@@ -68,6 +70,11 @@
             <div id="share_url"></div>
           </div>
         </div>
+        <div id="pausePopup" class="hide">
+          <h2>Game Paused</h2>
+          <p>Press the button below to resume the game.</p>
+          <button id="resumeButton">Resume Game</button>
+        </div>
       </div>
       <div id="instructions" class="hide">
         <i id="i-close-button" class="fa-solid fa-xmark"></i>
@@ -80,7 +87,6 @@
           <p>After completing a round, you can share it to a friend and challenge them to beat your time!</p>
         </div>
       </div>
-      
     </div>
     <script src="four-letter-words.js" type="module"></script>
     <script src="dailyWords.js" type="module"></script>

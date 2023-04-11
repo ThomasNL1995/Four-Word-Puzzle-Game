@@ -189,7 +189,14 @@ input {
 #resultHints {
   font-weight: 600;
 }
+#resultWords {
+  display: flex;
+  gap: 5px;
+}
 
+#resultWords a:hover {
+  text-decoration: underline;
+}
 #share_url {
   padding: 10px;
   margin-top: 5px;
