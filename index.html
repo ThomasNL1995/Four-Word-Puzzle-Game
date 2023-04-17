@@ -22,10 +22,19 @@
         <i id="infoButton" class="fa-solid fa-circle-info"></i>
         <div id="menu" class="hide">
           <i id="menu-close-button" class="fa-solid fa-xmark"></i>
-          <h2 class="menu-title">Gamemodes</h2>
+          <h2 class="menu-title">Stats</h2>
           <div class="menu-body">
-            <a href="daily.html">Daily</a>
-            <a href="infinite.html">Infinite</a>
+            <ul id="stats">
+              <li>Total Games Played: <span id="totalGamesPlayed">-</span></li>
+              <li>Average hints used: <span id="hintsUsedAverage">-</span></li>
+              <li>Completion time average: <span id="timerAverage">-</span></li>
+              <li>Quickest Completion Time: <span id="quickestComplete">-</span></li>
+              <li>Games Shared: <span id="gamesShared">-</span></li>
+              <li>Challenge Games Played: <span id="challengeGamesPlayed">-</span></li>
+              <li>Challenge Games Won: <span id="challengeGamesWon">-</span></li>
+              <li>Challenge Games Lost: <span id="challengeGamesLost">-</span></li>
+              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span>%</li>
+            </ul>
           </div>
         </div>
       </header>
@@ -62,6 +71,7 @@
             <p id="resultWords"></p>
           </div>
           <p>You guessed the correct words, in a time of <span id="resultTime"></span>, using <span id="resultHints"></span> hints!</p>
+          <p>This earned you <span id="resultPoints"></span> points</p>
           <div>
             <div class="result_buttons">
               <button id="shareButton">Share this game</button>

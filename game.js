@@ -1,7 +1,6 @@
 //npx http-server -c-1
 //http://192.168.1.235:8080/?data=MTQsNixPSUxTLERJTlQsT1dFRCxTRUNU
 import { fourLetterWords } from "./four-letter-words.js";
-import { dailyWords } from "./dailyWords.js";
 // BUTTONS
 const restartButton = document.getElementById("restartButton");
 const submitButton = document.getElementById("submitButton");
@@ -35,12 +34,13 @@ const resultTime = document.getElementById("resultTime");
 const resultCloseButton = document.getElementById("r-close-button");
 const resultWords = document.getElementById("resultWords");
 const resultHints = document.getElementById("resultHints");
+const resultPoints = document.getElementById("resultPoints");
 //SHARE ELEMENTS
 const shareUrlElement = document.getElementById("share_url");
 const shareButton = document.getElementById("shareButton");
 //CHALLENGE ELEMENTS
 const challengeEl = document.getElementById("challenge");
-const challengeNameEl = document.getElementById("challengeName");
+const challengePointsEl = document.getElementById("challengePoints");
 const challengeTimeEl = document.getElementById("challengeTime");
 const challengeHintsEl = document.getElementById("challengeHints");
 // TIMER
@@ -54,6 +54,7 @@ const corners = [0, 3, 8, 11];
 let challengeName = "";
 let challengeTime = 0;
 let challengeHints = 0;
+let challengePoints = 0;
 let pickedWords = ["test", "ever", "tape", "tear"];
 let combinedWord = null;
 let remainingLetters = null;
@@ -61,24 +62,32 @@ let isGameRunning = false;
 let selectedLetter = null;
 let firstGame = true;
 let hintsUsed = 0;
+let points = 0;
 let randomGame = true;
 let WORDLENGTH = 4;
 let letterObjectsArray = [];
 // ENUMS AND INTERFACES
 var gametypeEnum;
 (function (gametypeEnum) {
-    gametypeEnum["daily"] = "daily";
     gametypeEnum["random"] = "random";
     gametypeEnum["challenge"] = "challenge";
 })(gametypeEnum || (gametypeEnum = {}));
 let currentGametype = gametypeEnum.random;
-let gameState = {
-    gameStarted: false,
-    letterObjectsArray: [],
-    hintsUsed: 0,
-    timer: 0,
-    gameType: "daily",
-    pickedWords: [],
+let gameStats = {
+    totalGamesPlayed: 0,
+    totalHintsUsed: 0,
+    totalTimer: 0,
+    totalPoints: 0,
+    hintsUsedAverage: 0,
+    timerAverage: 0,
+    pointsAverage: 0,
+    quickestComplete: 0,
+    highestPoints: 0,
+    gamesShared: 0,
+    challengeGamesPlayed: 0,
+    challengeGamesWon: 0,
+    challengeGamesLost: 0,
+    challengeGamesWinrate: 0,
 };
 class LetterObject {
     constructor(props) {
@@ -101,7 +110,6 @@ class LetterObject {
                 this.placeLetter();
             }
             ParseClasses();
-            setAndStoreGameState();
         });
         (_a = this.letterElement) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
             if (!this.isUsed)
@@ -197,7 +205,6 @@ class LetterObject {
                 }
             }
             ParseClasses();
-            setAndStoreGameState();
         }
     }
 }
@@ -241,49 +248,12 @@ function GetFourRandomWords() {
         return GetFourRandomWords();
     }
 }
-function GetDailyWords() {
-    const startDate = new Date("4-6-2023");
-    const oneDay = 24 * 60 * 60 * 1000; // number of milliseconds in one day
-    const today = new Date();
-    const diffDays = Math.round((today.getTime() - startDate.getTime()) / oneDay);
-    const index = diffDays;
-    return dailyWords[index];
-}
 function CombineWords(words) {
     if (words) {
         let result = words[0] + words[2].charAt(1) + words[3].charAt(1) + words[2].charAt(2) + words[3].charAt(2) + words[1];
         return result;
     }
     return null;
-}
-function setAndStoreGameState() {
-    // gameState.letterObjectsArray = [];
-    // letterObjectsArrayO.forEach((letterObject) => {
-    //   gameState.letterObjectsArray.push(
-    //     new LetterObjectO({
-    //       filledBy: null,
-    //       filledAt: null,
-    //       filledAtIndex: letterObject.filledAtIndex,
-    //       filledByIndex: letterObject.filledByIndex,
-    //       index: letterObject.index,
-    //       letter: letterObject.letter,
-    //       inputElement: letterObject.inputElement,
-    //       letterElement: letterObject.letterElement,
-    //       isCorner: letterObject.isCorner,
-    //       isFilled: letterObject.isFilled,
-    //       isFilledByHint: letterObject.isFilledByHint,
-    //       isAvailable: letterObject.isAvailable,
-    //       isUsed: letterObject.isUsed,
-    //       isSelected: letterObject.isSelected,
-    //     })
-    //   );
-    // });
-    gameState.letterObjectsArray = letterObjectsArray;
-    gameState.hintsUsed = hintsUsed;
-    gameState.timer = elapsedSeconds;
-    gameState.gameType = currentGametype;
-    gameState.pickedWords = pickedWords;
-    localStorage.setItem("gameState", JSON.stringify(gameState));
 }
 function FormatTime(seconds) {
     const formatMinutes = Math.floor(seconds / 60)
@@ -350,7 +320,22 @@ function FindLetterFromIndex(indexProp) {
     });
     return result;
 }
-function startGame(gametype = gametypeEnum.random) {
+function StoreStats() {
+    localStorage.setItem("gameStats", JSON.stringify(gameStats));
+}
+function GetStatsFromLocalStorage() { }
+function FillStatsScreen() {
+    document.getElementById("totalGamesPlayed").textContent = gameStats.totalGamesPlayed.toString();
+    document.getElementById("hintsUsedAverage").textContent = gameStats.hintsUsedAverage.toString();
+    document.getElementById("timerAverage").textContent = FormatTime(gameStats.timerAverage);
+    document.getElementById("quickestComplete").textContent = FormatTime(gameStats.quickestComplete);
+    document.getElementById("gamesShared").textContent = gameStats.gamesShared.toString();
+    document.getElementById("challengeGamesPlayed").textContent = gameStats.challengeGamesPlayed.toString();
+    document.getElementById("challengeGamesWon").textContent = gameStats.challengeGamesWon.toString();
+    document.getElementById("challengeGamesLost").textContent = gameStats.challengeGamesLost.toString();
+    document.getElementById("challengeGamesWinrate").textContent = gameStats.challengeGamesWinrate.toString();
+}
+function StartGame(gametype = gametypeEnum.random) {
     if (!isGameRunning) {
         console.log("starting game...");
         isGameRunning = true;
@@ -361,15 +346,11 @@ function startGame(gametype = gametypeEnum.random) {
                 currentGametype = gametypeEnum.random;
                 break;
             case gametypeEnum.challenge:
+                challengePointsEl.textContent = challengePoints.toString();
                 challengeHintsEl.textContent = challengeHints.toString();
                 challengeTimeEl.textContent = FormatTime(challengeTime);
                 ToggleClass(challengeEl, "hide", false);
                 currentGametype = gametypeEnum.challenge;
-                break;
-            case gametypeEnum.daily:
-                pickedWords = GetDailyWords();
-                gameState.gameStarted = true;
-                currentGametype = gametypeEnum.daily;
                 break;
         }
         console.log("picked words are: " + pickedWords);
@@ -378,94 +359,9 @@ function startGame(gametype = gametypeEnum.random) {
         //event handler for selected by key
         document.addEventListener("keydown", SelectByKeyPress);
         startTimer();
-        //update gamestate object and write it to localstorage
-        setAndStoreGameState();
         firstGame = false;
     }
 }
-// function resumeGame(storedGameState: GameState) {
-//   //resuming game
-//   console.log("resuming game...");
-//   console.log(storedGameState);
-//   isGameRunning = true;
-//   let currentDailyWords = GetDailyWords();
-//   if (arraysAreEqual(storedGameState.pickedWords, currentDailyWords)) {
-//     pickedWords = GetDailyWords();
-//     currentGametype = gametypeEnum.daily;
-//     console.log("picked words are: " + pickedWords);
-//     combinedWord = CombineWords(pickedWords);
-//     elapsedTime = storedGameState.timer;
-//     hintsUsed = storedGameState.hintsUsed;
-//     console.log("Stored Game State:");
-//     console.log(storedGameState.letterObjectsArray);
-//     storedGameState.letterObjectsArray.forEach((letterObject) => {
-//       //create letter objects and put them in the array
-//       letterObjectsArrayO.push(
-//         new LetterObjectO({
-//           index: letterObject.index,
-//           letter: combinedWord![letterObject.index],
-//           inputElement: inputElements[letterObject.index] as HTMLInputElement,
-//           letterElement: null,
-//           filledBy: null,
-//           filledAt: null,
-//           filledAtIndex: letterObject.filledAtIndex,
-//           filledByIndex: letterObject.filledByIndex,
-//           isCorner: corners.includes(letterObject.index),
-//           isFilled: letterObject.isFilled,
-//           isFilledByHint: letterObject.isFilledByHint,
-//           isAvailable: letterObject.isAvailable,
-//           isUsed: letterObject.isUsed,
-//           isSelected: false,
-//         })
-//       );
-//     });
-//     console.log(letterObjectsArrayO);
-//     letterObjectsArrayO.forEach((letterObject) => {
-//       if (letterObject.filledByIndex !== null) {
-//         letterObject.filledBy = FindLetterFromIndex(letterObject.filledByIndex);
-//       }
-//       if (letterObject.filledAtIndex !== null) {
-//         letterObject.filledAt = FindLetterFromIndex(letterObject.filledAtIndex);
-//       }
-//     });
-//     console.log(letterObjectsArrayO);
-//     //add the corners and available letters to their spot
-//     letterObjectsArrayO.forEach((letterObject) => {
-//       if (letterObject.isCorner) {
-//         //if corner, put the letter in the input
-//         letterObject.inputElement!.value = letterObject.letter;
-//       } else {
-//         if (letterObject.filledBy) {
-//           //if filled, put the letter in the input
-//           letterObject.inputElement!.value = letterObject.filledBy.letter;
-//         }
-//         if (!letterObject.isCorner) {
-//           //if not corner, put the letter in the available letters
-//           const letterDiv = document.createElement("div");
-//           letterDiv.textContent = letterObject.letter;
-//           letterDiv.classList.add("letters");
-//           availableLettersElement.appendChild(letterDiv);
-//           letterObject.letterElement = letterDiv;
-//         }
-//       }
-//     });
-//     ParseClasses();
-//     //update gamestate object and write it to localstorage
-//     setAndStoreGameState();
-//     //event handler for selected by key
-//     document.addEventListener("keydown", SelectByKeyPress);
-//     letterObjectsArrayO.forEach((letter) => {
-//       if (!letter.isCorner && letter.letterElement) {
-//         letter.letterElement.addEventListener("click", (event) => {
-//           SelectLetter(letter);
-//         });
-//       }
-//       MakeLettersPlaceable(letter);
-//     });
-//     startTimer();
-//     firstGame = false;
-//   }
-// }
 function giveHint() {
     if (isGameRunning) {
         remainingLetters = letterObjectsArray.filter((obj) => !obj.isFilledByHint && !obj.isCorner);
@@ -498,7 +394,6 @@ function giveHint() {
             hintButton.setAttribute("disabled", "");
         }
         ParseClasses();
-        setAndStoreGameState();
     }
 }
 function clearAll() {
@@ -513,7 +408,6 @@ function clearAll() {
             }
         });
         ParseClasses();
-        setAndStoreGameState();
     }
 }
 function checkWin() {
@@ -531,37 +425,68 @@ function checkWin() {
             }
         });
         if (count === 12) {
-            isGameRunning = false;
-            randomGame = true; //make sure the next game will be random words again
-            stopTimer();
-            resultHints.textContent = hintsUsed.toString();
-            resultTime.textContent = FormatTime(elapsedSeconds);
-            pickedWords.forEach((word) => {
-                let resultWord = document.createElement("div");
-                resultWord.classList.add("result-word");
-                let resultWordTitle = document.createElement("div");
-                resultWordTitle.classList.add("result-word-title");
-                resultWordTitle.textContent = word;
-                resultWord.appendChild(resultWordTitle);
-                resultWords.appendChild(resultWord);
-                fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-                    .then((response) => response.json())
-                    .then((data) => {
-                    if (data && data.length > 0 && data[0].meanings.length > 0 && data[0].meanings[0].definitions.length > 0) {
-                        let definition = data[0].meanings[0].definitions[0].definition;
-                        let resultWordDefinition = document.createElement("div");
-                        resultWordDefinition.classList.add("result-word-definition");
-                        resultWordDefinition.textContent = definition;
-                        resultWord.appendChild(resultWordDefinition);
-                    }
-                });
-            });
-            ToggleClass(resultElement, "show", true);
+            GameWon();
         }
     }
 }
+function GameWon() {
+    isGameRunning = false;
+    stopTimer();
+    //calculate points
+    let points = Math.max(0, 900 - elapsedSeconds - hintsUsed * hintsUsed * 5);
+    //stats
+    gameStats.totalGamesPlayed++;
+    gameStats.totalHintsUsed += hintsUsed;
+    gameStats.totalTimer += elapsedSeconds;
+    gameStats.hintsUsedAverage = Math.round(gameStats.totalHintsUsed / gameStats.totalGamesPlayed);
+    gameStats.timerAverage = Math.round(gameStats.totalTimer / gameStats.totalGamesPlayed);
+    gameStats.totalPoints += points;
+    gameStats.pointsAverage = Math.round(gameStats.totalPoints / gameStats.totalGamesPlayed);
+    if (points > gameStats.highestPoints) {
+        gameStats.highestPoints = points;
+    }
+    if (elapsedSeconds < gameStats.quickestComplete || gameStats.quickestComplete === 0) {
+        gameStats.quickestComplete = elapsedSeconds;
+    }
+    if (currentGametype === gametypeEnum.challenge) {
+        gameStats.challengeGamesPlayed++;
+        if (points > challengePoints) {
+            gameStats.challengeGamesWon++;
+        }
+        else {
+            gameStats.challengeGamesLost++;
+        }
+        gameStats.challengeGamesWinrate = Math.round((gameStats.challengeGamesWon / gameStats.challengeGamesPlayed) * 100);
+    }
+    StoreStats();
+    //result modal
+    resultHints.textContent = hintsUsed.toString();
+    resultTime.textContent = FormatTime(elapsedSeconds);
+    resultPoints.textContent = points.toString();
+    pickedWords.forEach((word) => {
+        let resultWord = document.createElement("div");
+        resultWord.classList.add("result-word");
+        let resultWordTitle = document.createElement("div");
+        resultWordTitle.classList.add("result-word-title");
+        resultWordTitle.textContent = word;
+        resultWord.appendChild(resultWordTitle);
+        resultWords.appendChild(resultWord);
+        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+            .then((response) => response.json())
+            .then((data) => {
+            if (data && data.length > 0 && data[0].meanings.length > 0 && data[0].meanings[0].definitions.length > 0) {
+                let definition = data[0].meanings[0].definitions[0].definition;
+                let resultWordDefinition = document.createElement("div");
+                resultWordDefinition.classList.add("result-word-definition");
+                resultWordDefinition.textContent = definition;
+                resultWord.appendChild(resultWordDefinition);
+            }
+        });
+    });
+    ToggleClass(resultElement, "show", true);
+}
 function RestartGame() {
-    startGame(gametypeEnum.random);
+    StartGame(gametypeEnum.random);
 }
 function PauseGame() {
     if (isGameRunning) {
@@ -598,7 +523,9 @@ function cleanUpGame() {
     elapsedSeconds = 0;
 }
 function shareGame() {
-    const dataStr = elapsedSeconds + "," + hintsUsed + "," + pickedWords.join(",");
+    gameStats.gamesShared += 1;
+    StoreStats();
+    const dataStr = points + "," + elapsedSeconds + "," + hintsUsed + "," + pickedWords.join(",");
     // encode the string to Base64
     const encodedData = btoa(dataStr);
     // construct the URL with the encoded data
@@ -695,23 +622,12 @@ function OnLoad() {
         document.documentElement.style.setProperty("--vh", `${vh}px`);
     });
     AddAllButtonEventListeners();
-    //if we are on the daily page, get the daily words
-    if (window.location.pathname === "/daily.html") {
-        //check if there is a saved game
-        const gameStateJSON = localStorage.getItem("gameState");
-        let storedGameState = null;
-        if (gameStateJSON) {
-            storedGameState = JSON.parse(gameStateJSON);
-        }
-        if (storedGameState && storedGameState.gameType === gametypeEnum.daily) {
-            //resumeGame(storedGameState);
-            startGame(gametypeEnum.daily);
-        }
-        else {
-            startGame(gametypeEnum.daily);
-        }
+    //check if stats are stored in localstorage
+    if (localStorage.getItem("gameStats")) {
+        gameStats = JSON.parse(localStorage.getItem("gameStats"));
+        FillStatsScreen();
     }
-    else if (window.location.pathname === "/challenge.html") {
+    if (window.location.pathname === "/challenge.html") {
         // Get the current URL
         const url = new URL(window.location.href);
         // Parse the query string
@@ -724,19 +640,18 @@ function OnLoad() {
             if (data) {
                 dataSet = atob(data).split(",");
             }
-            challengeTime = Number(dataSet[0]);
-            challengeHints = Number(dataSet[1]);
-            pickedWords = dataSet.splice(2);
-            startGame(gametypeEnum.challenge);
+            [challengePoints, challengeTime, challengeHints] = dataSet.map(Number);
+            pickedWords = dataSet.splice(3);
+            StartGame(gametypeEnum.challenge);
         }
         else {
             // Generate a random game
             console.log("incorrect challengeLink");
-            startGame(gametypeEnum.random);
+            StartGame(gametypeEnum.random);
         }
     }
     else {
-        startGame(gametypeEnum.random);
+        StartGame(gametypeEnum.random);
     }
 }
 OnLoad();

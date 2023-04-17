@@ -449,6 +449,12 @@ a {
   }
 }
 
+#stats {
+  list-style-type: none;
+  padding-inline-start: 0;
+  line-height: 30px;  
+}
+
 #pauseButton {
   display: flex;
   align-items: center;

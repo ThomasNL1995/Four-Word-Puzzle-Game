@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Word Weaver - Challenge</title>
+    <title>Word Weaver</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
@@ -22,16 +22,25 @@
         <i id="infoButton" class="fa-solid fa-circle-info"></i>
         <div id="menu" class="hide">
           <i id="menu-close-button" class="fa-solid fa-xmark"></i>
-          <h2 class="menu-title">Gamemodes</h2>
+          <h2 class="menu-title">Stats</h2>
           <div class="menu-body">
-            <a href="daily.html">Daily</a>
-            <a href="infinite.html">Infinite</a>
+            <ul id="stats">
+              <li>Total Games Played: <span id="totalGamesPlayed">-</span></li>
+              <li>Average hints used: <span id="hintsUsedAverage">-</span></li>
+              <li>Completion time average: <span id="timerAverage">-</span></li>
+              <li>Quickest Completion Time: <span id="quickestComplete">-</span></li>
+              <li>Games Shared: <span id="gamesShared">-</span></li>
+              <li>Challenge Games Played: <span id="challengeGamesPlayed">-</span></li>
+              <li>Challenge Games Won: <span id="challengeGamesWon">-</span></li>
+              <li>Challenge Games Lost: <span id="challengeGamesLost">-</span></li>
+              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span></li>
+            </ul>
           </div>
         </div>
       </header>
       <div id="gameboard">
         <div id="challenge">
-          You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
+          You've been challenged by <span id="challengeName">someone</span>. Try to beat their score of <span id="challengePoints">0</span>. They took <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
         </div>
         <form id="game-form">
           <div class="flex-wrapper-row">
@@ -62,6 +71,7 @@
             <p id="resultWords"></p>
           </div>
           <p>You guessed the correct words, in a time of <span id="resultTime"></span>, using <span id="resultHints"></span> hints!</p>
+          <p>This earned you <span id="resultPoints"></span> points</p>
           <div>
             <div class="result_buttons">
               <button id="shareButton">Share this game</button>

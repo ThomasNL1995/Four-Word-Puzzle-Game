@@ -1,2 +1,2 @@
-// Add gamestate logic
-// Add pause function
+points on screen
+challenge won or lost on result screen
