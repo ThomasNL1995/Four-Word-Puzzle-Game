@@ -25,10 +25,30 @@ input {
   margin: 0;
   color: white;
 }
+
+.flex-wrapper-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+.flex-wrapper-column {
+  display: flex;
+  flex-direction: column;
+}
+.flex {
+  display: flex;
+}
+.flex-row {
+  flex-direction: row;
+}
+.flex-column {
+  flex-direction: column;
+}
 #game-container {
   background: rgb(28, 28, 28);
   background: linear-gradient(49deg, rgba(28, 28, 28, 1) 0%, rgba(59, 59, 59, 1) 100%);
-  min-height: 100vh;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
 }
 #header {
   display: flex;
@@ -62,21 +82,31 @@ input {
   align-items: center;
   margin: 10px auto;
   padding: 0 20px;
+  /* position: relative; */
 }
 
 #button-field {
   display: flex;
   flex-direction: column;
   width: 100%;
+  gap: 10px;
 }
-#buttons_row1 {
+#buttons_row1,
+#buttons_row2 {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
 }
 
+#hints-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 13px;
+}
 #button-field button,
-#result button {
+#result button,
+#resumeButton {
   font-family: inherit;
   box-shadow: none;
   border: none;
@@ -118,8 +148,12 @@ input {
   #title {
     font-size: 1.3em;
   }
-  #buttons_row1 {
+  #buttons_row1,
+  #buttons_row2 {
     justify-content: center;
+  }
+  #hints-info {
+    margin-left: 20px;
   }
   #button-field button {
     font-size: 16px;
@@ -157,7 +191,7 @@ input {
   background: #6a6a6af2;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   margin: 10px auto;
-  padding: 0 20px;
+  padding: 10px 20px;
   pointer-events: none;
   opacity: 0;
   transition: all 0.5s ease-in-out;
@@ -166,7 +200,10 @@ input {
 #result h2 {
   font-size: 2.3em;
 }
-
+#result .definition-info {
+  font-size: 12px;
+  font-style: italic;
+}
 #result.show {
   opacity: 1;
   pointer-events: auto;
@@ -175,6 +212,39 @@ input {
 #resultTime,
 #resultHints {
   font-weight: 600;
+}
+#resultWords {
+  display: flex;
+  gap: 5px;
+  width: 100%;
+  justify-content: space-evenly;
+}
+
+.result-word:hover .result-word-definition {
+  opacity: 1;
+  visibility: visible;
+}
+
+.result-word-definition {
+  opacity: 0;
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+
+  /* Position the tooltip text - see examples below! */
+  position: absolute;
+}
+
+.result-word-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+#challengeResult.hide {
+  display: none;
 }
 
 #share_url {
@@ -195,21 +265,38 @@ input {
   flex-direction: column;
   margin-bottom: 20px;
 }
-
-.row2 {
+#inputs {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+#row1,
+#row4 {
+  display: flex;
+}
+#row2 {
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
 }
 
-.row3 {
+#row3 {
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
   margin-bottom: 4px;
 }
 
-input[type="text"] {
+#points-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.input {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: var(--LB_InputSize);
   height: var(--LB_InputSize);
   box-sizing: border-box;
@@ -226,19 +313,27 @@ input[type="text"] {
   cursor: default;
 }
 
-#game-form.letterSelected input[type="text"],
-input[type="text"].filled {
+#row1 .input:not(:nth-child(4)),
+#row4 .input:not(:nth-child(4)) {
+  margin-right: 4px;
+}
+
+.input.corner,
+.input.filled,
+.input.filledByHint {
+  background-color: var(--LB_MainBgColor);
+  color: white;
+  cursor: default;
+}
+
+#game-form.letterSelected .input,
+.input.filled {
   cursor: pointer;
 }
 
-input[type="text"].corner,
-input[type="text"].filled,
-input[type="text"].filledByHint {
-  background-color: var(--LB_MainBgColor);
-  color: white;
-}
-input[type="text"].filledByHint {
+.input.filledByHint {
   border-color: orange;
+  cursor: default;
 }
 .availableLettersWrap {
   text-align: center;
@@ -301,6 +396,9 @@ input[type="text"].filledByHint {
   font-size: 18px;
   font-weight: 600;
 }
+#timer.paused {
+  font-style: italic;
+}
 #challenge {
   text-align: center;
   font-size: 14px;
@@ -313,7 +411,8 @@ input[type="text"].filledByHint {
 }
 
 #challengeHints,
-#challengeTime {
+#challengeTime,
+#challengePoints {
   font-weight: 600;
 }
 
@@ -366,7 +465,7 @@ input[type="text"].filledByHint {
   color: white;
   text-decoration: none;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 53px);
   position: absolute;
   top: 53px;
   left: 0%;
@@ -377,6 +476,7 @@ input[type="text"].filledByHint {
   box-sizing: border-box;
   opacity: 1;
   transition: all 0.3s ease-in-out;
+  z-index: 2;
 }
 
 #menu-close-button {
@@ -410,4 +510,60 @@ a {
   #menu.hide {
     transform: translate(-55%);
   }
+}
+
+#stats {
+  list-style-type: none;
+  padding-inline-start: 0;
+  line-height: 30px;
+}
+
+#pauseButton {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-style: italic;
+}
+
+#pauseButton i {
+  margin-left: 5px;
+}
+
+#pausePopup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  width: calc(100% - 40px);
+  max-width: 600px;
+  height: 100vh;
+  height: calc((var(--vh, 1vh) * 100) - 73px - 27px);
+  border-radius: 10px;
+  box-sizing: border-box;
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: #6a6a6a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  padding: 40px 40px;
+  opacity: 1;
+  transition: all 0.5s ease-in-out;
+}
+
+#pausePopup #resumeButton {
+  width: fit-content;
+}
+
+#pausePopup h2 {
+  font-size: 2.5em;
+}
+
+#pausePopup.hide {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 5%);
 }

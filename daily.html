@@ -25,6 +25,7 @@
           <h2 class="menu-title">Gamemodes</h2>
           <div class="menu-body">
             <a href="daily.html">Daily</a>
+            <a href="infinite.html">Infinite</a>
           </div>
         </div>
       </header>
@@ -32,28 +33,15 @@
         <div id="challenge">
           You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
         </div>
-        <div id="timer">0:00</div>
         <form id="game-form">
-          <div class="row1">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
+          <div class="flex-wrapper-row">
+            <div id="timer">0:00</div>
+            <a id="pauseButton">Pause Game<i class="fa-solid fa-pause"></i></a>
           </div>
-          <div class="row2">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row3">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row4">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
-          </div>
+          <div id="row1"></div>
+          <div id="row2"></div>
+          <div id="row3"></div>
+          <div id="row4"></div>
         </form>
         <div class="availableLettersWrap">
           <h3 class="av_title">Available letters:</h3>
@@ -81,6 +69,11 @@
             </div>
             <div id="share_url"></div>
           </div>
+        </div>
+        <div id="pausePopup" class="hide">
+          <h2>Game Paused</h2>
+          <p>Press the button below to resume the game.</p>
+          <button id="resumeButton">Resume Game</button>
         </div>
       </div>
       <div id="instructions" class="hide">

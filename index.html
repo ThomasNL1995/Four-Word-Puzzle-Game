@@ -22,39 +22,37 @@
         <i id="infoButton" class="fa-solid fa-circle-info"></i>
         <div id="menu" class="hide">
           <i id="menu-close-button" class="fa-solid fa-xmark"></i>
-          <h2 class="menu-title">Gamemodes</h2>
+          <h2 class="menu-title">Stats</h2>
           <div class="menu-body">
-            <a href="daily.html">Daily</a>
-            <a href="infinite.html">Infinite</a>
+            <ul id="stats">
+              <li>Total Games Played: <span id="totalGamesPlayed">-</span></li>
+              <li>Average hints used: <span id="hintsUsedAverage">-</span></li>
+              <li>Completion time average: <span id="timerAverage">-</span></li>
+              <li>Quickest Completion Time: <span id="quickestComplete">-</span></li>
+              <li>Games Shared: <span id="gamesShared">-</span></li>
+              <li>Challenge Games Played: <span id="challengeGamesPlayed">-</span></li>
+              <li>Challenge Games Won: <span id="challengeGamesWon">-</span></li>
+              <li>Challenge Games Lost: <span id="challengeGamesLost">-</span></li>
+              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span>%</li>
+            </ul>
           </div>
         </div>
       </header>
       <div id="gameboard">
-        
         <div id="challenge">
           You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
         </div>
-        <div id="timer">0:00</div>
         <form id="game-form">
-          <div class="row1">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
+          <div class="flex-wrapper-row">
+            <div id="timer">0:00</div>
+            <a id="pauseButton">Pause Game<i class="fa-solid fa-pause"></i></a>
           </div>
-          <div class="row2">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row3">
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-          </div>
-          <div class="row4">
-            <input type="text" class="corner" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" maxlength="1" readonly />
-            <input type="text" class="corner" maxlength="1" readonly />
+          <div id="inputs">
+            <div id="row1"></div>
+            <div id="row2"></div>
+            <div id="row3"></div>
+            <div id="row4"></div>
+            <div id="points-wrap"><span id="currentPoints">900</span> points</div>
           </div>
         </form>
         <div class="availableLettersWrap">
@@ -63,19 +61,28 @@
         </div>
         <div id="button-field">
           <div id="buttons_row1">
+            <button id="hintButton">Use Hint</button>
+            <div id="hints-info">
+              <div id="hints-remaining">Hints remaining: 6</div>
+              <div id="hints-cost">Hint cost: 0 points</div>
+            </div>
+          </div>
+          <div id="buttons_row2">
             <button id="submitButton">Submit</button>
-            <button id="hintButton">Hint (6)</button>
             <button id="clearButton">Clear All</button>
           </div>
         </div>
         <div id="wrongAnswer"></div>
         <div id="result">
           <i id="r-close-button" class="fa-solid fa-xmark"></i>
-          <div>
-            <h2>You got it!</h2>
-            <p id="resultWords"></p>
-          </div>
+
+          <h2>You got it!</h2>
+          <p class="definition-info">hover/click over the word to show the definition</p>
+          <div id="resultWords"></div>
+
           <p>You guessed the correct words, in a time of <span id="resultTime"></span>, using <span id="resultHints"></span> hints!</p>
+          <p>This earned you <span id="resultPoints"></span> points</p>
+          <p id="challengeResult"></p>
           <div>
             <div class="result_buttons">
               <button id="shareButton">Share this game</button>
@@ -83,6 +90,11 @@
             </div>
             <div id="share_url"></div>
           </div>
+        </div>
+        <div id="pausePopup" class="hide">
+          <h2>Game Paused</h2>
+          <p>Press the button below to resume the game.</p>
+          <button id="resumeButton">Resume Game</button>
         </div>
       </div>
       <div id="instructions" class="hide">
@@ -96,7 +108,6 @@
           <p>After completing a round, you can share it to a friend and challenge them to beat your time!</p>
         </div>
       </div>
-      
     </div>
     <script src="four-letter-words.js" type="module"></script>
     <script src="dailyWords.js" type="module"></script>
