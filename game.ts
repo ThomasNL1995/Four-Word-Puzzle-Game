@@ -8,6 +8,8 @@ import { dailyWords } from "./dailyWords.js";
 const restartButton = document.getElementById("restartButton") as HTMLButtonElement;
 const submitButton = document.getElementById("submitButton") as HTMLButtonElement;
 const hintButton = document.getElementById("hintButton") as HTMLButtonElement;
+const hintsRemainingEl = document.getElementById("hints-remaining") as HTMLDivElement;
+const hintsCostEl = document.getElementById("hints-cost") as HTMLDivElement;
 const clearButton = document.getElementById("clearButton") as HTMLButtonElement;
 
 //INSTRUCTIONS ELEMENTS
@@ -35,6 +37,8 @@ const row4 = document.getElementById("row4") as HTMLDivElement;
 const inputElements: HTMLDivElement[] = [];
 const availableLettersElement = document.getElementById("availableLettersDiv") as HTMLDivElement;
 const wrongAnswer = document.getElementById("wrongAnswer") as HTMLDivElement;
+const currentPoints = document.getElementById("currentPoints") as HTMLSpanElement;
+
 
 //RESULT ELEMENTS
 const resultElement = document.getElementById("result") as HTMLDivElement;
@@ -43,6 +47,7 @@ const resultCloseButton = document.getElementById("r-close-button") as HTMLButto
 const resultWords = document.getElementById("resultWords") as HTMLSpanElement;
 const resultHints = document.getElementById("resultHints") as HTMLSpanElement;
 const resultPoints = document.getElementById("resultPoints") as HTMLSpanElement;
+const challengeResultEl = document.getElementById("challengeResult") as HTMLParagraphElement;
 
 //SHARE ELEMENTS
 const shareUrlElement = document.getElementById("share_url") as HTMLDivElement;
@@ -74,7 +79,7 @@ let isGameRunning = false;
 let selectedLetter: LetterObject | null = null;
 let firstGame = true;
 let hintsUsed = 0;
-let points = 0;
+let points = 900;
 let randomGame = true;
 let WORDLENGTH = 4;
 
@@ -468,8 +473,14 @@ function giveHint() {
       randomLetter.isFilledByHint = true;
       randomLetter.isFilled = true;
 
+      //remove points
+      points -= hintsUsed * hintsUsed * 5;
+      currentPoints.textContent = points.toString();
+
       hintsUsed++;
-      hintButton.innerHTML = `Hint (${remainingLetters.length - 3})`;
+      hintsRemainingEl.innerHTML = `Hints Remaining: ${remainingLetters.length - 3}`;
+      hintsCostEl.innerHTML = hintsUsed === 6 ? "Hint Cost: -" : `Hint Cost: ${hintsUsed * hintsUsed * 5} points`;
+
     }
     if (remainingLetters.length === 3) {
       hintButton.setAttribute("disabled", "");
@@ -518,7 +529,7 @@ function GameWon() {
   stopTimer();
 
   //calculate points
-  let points = Math.max(0, 900 - elapsedSeconds - hintsUsed * hintsUsed * 5);
+  //points = Math.max(0, 900 - elapsedSeconds - hintsUsed * hintsUsed * 5);
 
   //stats
   gameStats.totalGamesPlayed++;
@@ -552,6 +563,15 @@ function GameWon() {
   resultHints.textContent = hintsUsed.toString();
   resultTime.textContent = FormatTime(elapsedSeconds);
   resultPoints.textContent = points.toString();
+
+  if (currentGametype === gametypeEnum.challenge) {
+    gameStats.challengeGamesPlayed++;
+    if (points > challengePoints) {
+      challengeResultEl.textContent = "You have beaten the challenger!";
+    } else {
+      challengeResultEl.textContent = "You have been beaten by the challenger";
+    }
+  }
   pickedWords!.forEach((word) => {
     let resultWord = document.createElement("div");
     resultWord.classList.add("result-word");
@@ -604,7 +624,6 @@ function cleanUpGame() {
   remainingLetters = null;
   hintsUsed = 0;
   hintButton.removeAttribute("disabled");
-  hintButton.innerHTML = "Hint (6)";
   availableLettersElement.innerHTML = "";
   row1.innerHTML = "";
   row2.innerHTML = "";
@@ -682,6 +701,8 @@ function updateTimer() {
   //console.log(startTime.getTime(), now.getTime());
   elapsedSeconds = Math.floor((now.getTime() - startTime!.getTime() - pausedSeconds) / 1000); // calculate the elapsed time in seconds
   mainTimer.textContent = FormatTime(elapsedSeconds);
+  points--;
+  currentPoints.textContent = points.toString();
   //setAndStoreGameState();
 }
 
@@ -755,7 +776,7 @@ function OnLoad() {
         dataSet = atob(data!).split(",");
       }
       [challengePoints, challengeTime, challengeHints] = dataSet.map(Number);
-
+      console.log(challengePoints);
       pickedWords = dataSet.splice(3);
 
       StartGame(gametypeEnum.challenge);

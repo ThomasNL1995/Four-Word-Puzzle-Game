@@ -33,7 +33,7 @@
               <li>Challenge Games Played: <span id="challengeGamesPlayed">-</span></li>
               <li>Challenge Games Won: <span id="challengeGamesWon">-</span></li>
               <li>Challenge Games Lost: <span id="challengeGamesLost">-</span></li>
-              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span></li>
+              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span>%</li>
             </ul>
           </div>
         </div>
@@ -47,10 +47,13 @@
             <div id="timer">0:00</div>
             <a id="pauseButton">Pause Game<i class="fa-solid fa-pause"></i></a>
           </div>
-          <div id="row1"></div>
-          <div id="row2"></div>
-          <div id="row3"></div>
-          <div id="row4"></div>
+          <div id="inputs">
+            <div id="row1"></div>
+            <div id="row2"></div>
+            <div id="row3"></div>
+            <div id="row4"></div>
+            <div id="points-wrap"><span id="currentPoints">900</span> points</div>
+          </div>
         </form>
         <div class="availableLettersWrap">
           <h3 class="av_title">Available letters:</h3>
@@ -58,20 +61,28 @@
         </div>
         <div id="button-field">
           <div id="buttons_row1">
+            <button id="hintButton">Use Hint</button>
+            <div id="hints-info">
+              <div id="hints-remaining">Hints remaining: 6</div>
+              <div id="hints-cost">Hint cost: 0 points</div>
+            </div>
+          </div>
+          <div id="buttons_row2">
             <button id="submitButton">Submit</button>
-            <button id="hintButton">Hint (6)</button>
             <button id="clearButton">Clear All</button>
           </div>
         </div>
         <div id="wrongAnswer"></div>
         <div id="result">
           <i id="r-close-button" class="fa-solid fa-xmark"></i>
-          <div>
-            <h2>You got it!</h2>
-            <p id="resultWords"></p>
-          </div>
+
+          <h2>You got it!</h2>
+          <p class="definition-info">hover/click over the word to show the definition</p>
+          <div id="resultWords"></div>
+
           <p>You guessed the correct words, in a time of <span id="resultTime"></span>, using <span id="resultHints"></span> hints!</p>
           <p>This earned you <span id="resultPoints"></span> points</p>
+          <p id="challengeResult"></p>
           <div>
             <div class="result_buttons">
               <button id="shareButton">Share this game</button>
