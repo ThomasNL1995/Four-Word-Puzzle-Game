@@ -382,22 +382,19 @@ function showResult() {
   if (!el.resultDialog.open) el.resultDialog.showModal();
 }
 
-const definitions = new Map<string, string>();
+type Definition = { pos: string; text: string };
+let definitions: Promise<Record<string, Definition>> | null = null;
 
 async function showDefinition(word: string) {
-  el.definition.textContent = "Looking it up…";
-  let text = definitions.get(word);
-  if (!text) {
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
-      const data = await res.json();
-      text = data?.[0]?.meanings?.[0]?.definitions?.[0]?.definition ?? "No definition found.";
-    } catch {
-      text = "Couldn't load a definition right now.";
-    }
-    definitions.set(word, text!);
+  // Bundled with the game (from WordNet), loaded on first use as a separate chunk.
+  definitions ??= import("./data/definitions.json").then((m) => m.default as Record<string, Definition>);
+  try {
+    const def = (await definitions)[word];
+    el.definition.textContent = def ? `${word} (${def.pos}): ${def.text}` : `${word}: no definition available.`;
+  } catch {
+    definitions = null; // e.g. the chunk failed to load while offline; try again next tap
+    el.definition.textContent = "Couldn't load the definition. Check your connection and try again.";
   }
-  el.definition.textContent = `${word}: ${text}`;
 }
 
 async function share() {

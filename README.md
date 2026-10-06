@@ -54,6 +54,8 @@ npm run puzzles
 npm test
 ```
 
+Definitions shown on the result screen come from `src/data/definitions.json`, built by `npm run definitions` (`scripts/build-definitions.mjs`) from WordNet. To fix a definition or add one WordNet doesn't have, edit `scripts/definition-overrides.json` and run it again. Run it after `npm run puzzles` too: it fails if a puzzle word has no definition.
+
 Regenerating changes which puzzle belongs to which day, so do it before launch or only for days that haven't happened yet.
 
-Credits: [SCOWL](http://wordlist.aspell.net/) (MIT-like), [wordfreq](https://github.com/rspeer/wordfreq) (Apache-2.0, data CC BY-SA 4.0), definitions from the [Free Dictionary API](https://dictionaryapi.dev/).
+Credits: [SCOWL](http://wordlist.aspell.net/) (MIT-like), [wordfreq](https://github.com/rspeer/wordfreq) (Apache-2.0, data CC BY-SA 4.0), definitions from [WordNet 3.1](https://wordnet.princeton.edu/) (© Princeton University, [WordNet license](https://wordnet.princeton.edu/license-and-commercial-use)).

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dailyPuzzle, dailyPuzzles, practicePuzzles, puzzleNumber } from "./daily.ts";
+import definitions from "./data/definitions.json";
 import validWords from "./data/valid-words.json";
 import { countSolutions, solutionLetters } from "./puzzle.ts";
 import { decodeChallenge, emojiBoard, encodeChallenge, formatTime } from "./share.ts";
@@ -26,6 +27,15 @@ describe("shipped puzzles", () => {
   it("every puzzle has exactly one solution", () => {
     for (const p of [...dailyPuzzles, ...practicePuzzles]) {
       expect(countSolutions(p, validWords, 2), p.join(" ")).toBe(1);
+    }
+  });
+});
+
+describe("definitions", () => {
+  it("every puzzle word has a definition", () => {
+    const defs = definitions as Record<string, { pos: string; text: string }>;
+    for (const word of new Set([...dailyPuzzles, ...practicePuzzles].flat())) {
+      expect(defs[word]?.text, word).toBeTruthy();
     }
   });
 });
