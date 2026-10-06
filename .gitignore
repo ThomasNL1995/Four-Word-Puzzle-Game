@@ -1,1 +1,4 @@
-/four-letter-words2.json
+node_modules/
+dist/
+.venv/
+scripts/.cache/
