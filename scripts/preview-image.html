@@ -1,0 +1,129 @@
+<!doctype html>
+<!-- Source of public/preview.jpg, the image shown when the game's link is shared.
+     Regenerate with: node scripts/make-preview-image.mjs -->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Courier+Prime:wght@700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --felt: #1e5a43;
+        --felt-light: #23684e;
+        --felt-dark: #154532;
+        --maple: #e2b277;
+        --maple-light: #eec48d;
+        --maple-dark: #d29e5f;
+        --maple-edge: #a8733d;
+        --walnut: #3b2412;
+        --walnut-light: #5a3a20;
+        --walnut-edge: #26170b;
+        --brass: #d9b45a;
+        --chalk: #f1ead8;
+      }
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 90px;
+        color: var(--chalk);
+        background:
+          repeating-linear-gradient(0deg, transparent 0 7px, rgba(0, 0, 0, 0.045) 7px 9px),
+          repeating-linear-gradient(90deg, transparent 0 7px, rgba(255, 255, 255, 0.025) 7px 9px),
+          radial-gradient(120% 90% at 40% 30%, var(--felt-light) 0%, var(--felt) 50%, var(--felt-dark) 100%);
+      }
+      .text {
+        display: grid;
+        gap: 22px;
+        width: 470px;
+      }
+      h1 {
+        margin: 0;
+        font-family: "Alfa Slab One", serif;
+        font-weight: 400;
+        font-size: 82px;
+        line-height: 0.95;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--brass);
+      }
+      p {
+        margin: 0;
+        font-family: "Courier Prime", monospace;
+        font-weight: 700;
+        font-size: 30px;
+        line-height: 1.35;
+      }
+      .sizes {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .sizes span {
+        display: grid;
+        place-items: center;
+        width: 58px;
+        height: 50px;
+        border: 3px dashed rgba(241, 234, 216, 0.45);
+        border-radius: 6px;
+        font-family: "Alfa Slab One", serif;
+        font-size: 26px;
+      }
+      .sizes span:first-child {
+        border: 3px solid var(--maple);
+        background: var(--maple);
+        color: var(--walnut);
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(4, 96px);
+        grid-template-rows: repeat(4, 96px);
+        gap: 10px;
+        transform: rotate(-3deg);
+      }
+      .cell {
+        display: grid;
+        place-items: center;
+        border-radius: 7px;
+        font-family: "Alfa Slab One", serif;
+        font-size: 48px;
+        color: var(--walnut);
+        background: linear-gradient(160deg, var(--maple-light) 0%, var(--maple) 45%, var(--maple-dark) 100%);
+        box-shadow:
+          inset 0 -5px 0 var(--maple-edge),
+          0 5px 8px rgba(0, 0, 0, 0.35);
+      }
+      .corner {
+        color: var(--chalk);
+        background: linear-gradient(160deg, var(--walnut-light), var(--walnut));
+        box-shadow:
+          inset 0 -5px 0 var(--walnut-edge),
+          0 5px 8px rgba(0, 0, 0, 0.35);
+      }
+      .empty {
+        border: 3px dashed rgba(241, 234, 216, 0.3);
+        background: rgba(0, 0, 0, 0.12);
+        box-shadow: none;
+      }
+      .gap {
+        visibility: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="text">
+      <h1>Word<br />Weaver</h1>
+      <p>Weave four hidden words into one frame. A new puzzle every day.</p>
+      <div class="sizes"><span>4</span><span>5</span><span>6</span></div>
+    </div>
+    <!-- WORD / PLAY across, WRAP / DENY down -->
+    <div class="board">
+      <div class="cell corner">W</div><div class="cell">O</div><div class="cell">R</div><div class="cell corner">D</div>
+      <div class="cell">R</div><div class="cell gap"></div><div class="cell gap"></div><div class="cell empty"></div>
+      <div class="cell empty"></div><div class="cell gap"></div><div class="cell gap"></div><div class="cell">N</div>
+      <div class="cell corner">P</div><div class="cell">L</div><div class="cell empty"></div><div class="cell corner">Y</div>
+    </div>
+  </body>
+</html>

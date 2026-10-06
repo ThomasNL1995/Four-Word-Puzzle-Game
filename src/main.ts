@@ -766,6 +766,13 @@ async function boot() {
 
 boot();
 
+// Offline play and "add to home screen": only in the built site, not while developing.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register("sw.js").catch(() => {
+    // No offline support (e.g. private mode); the game works the same online.
+  });
+}
+
 // First visit: explain the game.
 if (!loadSetting("seen-help")) {
   saveSetting("seen-help", "1");

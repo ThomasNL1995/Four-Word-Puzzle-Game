@@ -12,7 +12,8 @@
     "words": ".venv/bin/python scripts/build-wordlists.py",
     "puzzles": "node scripts/generate-puzzles.mjs",
     "definitions": "node scripts/build-definitions.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "preview-image": "node scripts/make-preview-image.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

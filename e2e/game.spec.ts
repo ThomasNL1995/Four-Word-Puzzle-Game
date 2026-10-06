@@ -166,3 +166,23 @@ for (const size of [4, 5, 6]) {
     await expectNoScroll(page);
   });
 }
+
+test("works offline after the first visit, all word lengths included", async ({ page, context }) => {
+  await openGame(page);
+  // Wait until the service worker has stored everything and controls the page.
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true }));
+    }
+  });
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.locator(".cell")).toHaveCount(12);
+  await page.locator('[data-size-choice="6"]').click();
+  await expect(page.locator(".cell")).toHaveCount(20);
+  await expect(page.locator(".tile")).toHaveCount(16);
+  // The fonts were stored too, so it still looks right.
+  expect(await page.evaluate(async () => (await document.fonts.load('1em "Alfa Slab One"')).length)).toBeGreaterThan(0);
+});
