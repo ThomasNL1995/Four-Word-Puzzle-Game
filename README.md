@@ -20,7 +20,7 @@ npm test           # unit tests (game logic, puzzle uniqueness, stats, share cod
 npm run build      # type check + production build in dist/
 ```
 
-Pushing to `main` runs the tests and deploys `dist/` to GitHub Pages (`.github/workflows/deploy.yml`). For that to work, set **Settings → Pages → Source** to **GitHub Actions**.
+Pushing to `master` runs the tests and deploys `dist/` to GitHub Pages (`.github/workflows/deploy.yml`). For that to work, set **Settings → Pages → Source** to **GitHub Actions**.
 
 ### Code layout
 
