@@ -10,12 +10,14 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "words": ".venv/bin/python scripts/build-wordlists.py",
-    "puzzles": "node scripts/generate-puzzles.mjs"
+    "puzzles": "node scripts/generate-puzzles.mjs",
+    "definitions": "node scripts/build-definitions.mjs"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "wordnet-db": "^3.1.14"
   }
 }
