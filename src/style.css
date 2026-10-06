@@ -15,11 +15,17 @@
   --brass: #d9b45a;
   --brass-light: #f4d996;
   --brass-edge: #a7843a;
+  --gold: #c58d24;
+  --gold-dark: #9c6a14;
+  --gold-edge: #6f4a0c;
   --chalk: #f1ead8;
   --chalk-soft: rgba(241, 234, 216, 0.72);
   --chalk-faint: rgba(241, 234, 216, 0.3);
-  --stitch-dark: rgba(0, 0, 0, 0.09);
-  --stitch-light: rgba(255, 255, 255, 0.05);
+  --stitch-dark: rgba(0, 0, 0, 0.045);
+  --stitch-light: rgba(255, 255, 255, 0.025);
+  --weave:
+    repeating-linear-gradient(0deg, transparent 0 7px, var(--stitch-dark) 7px 9px),
+    repeating-linear-gradient(90deg, transparent 0 7px, var(--stitch-light) 7px 9px);
 
   --font-display: "Alfa Slab One", Rockwell, "Roboto Slab", Georgia, serif;
   --font-label: "Courier Prime", "Courier New", ui-monospace, monospace;
@@ -42,15 +48,17 @@ html {
   background: var(--felt-dark);
 }
 
-/* The woven felt: fine horizontal and vertical threads over a lit table */
+/* The woven felt: soft horizontal and vertical threads over a lit table.
+   The page is a column so the game can sit in the middle of tall screens. */
 body {
   margin: 0;
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   font-family: var(--font-text);
   color: var(--chalk);
   background:
-    repeating-linear-gradient(0deg, transparent 0 3px, var(--stitch-dark) 3px 4px),
-    repeating-linear-gradient(90deg, transparent 0 3px, var(--stitch-light) 3px 4px),
+    var(--weave),
     radial-gradient(120% 80% at 50% 15%, var(--felt-light) 0%, var(--felt) 50%, var(--felt-dark) 100%);
   background-attachment: fixed;
 }
@@ -153,12 +161,22 @@ a {
 /* ---------- Game ---------- */
 
 .game {
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  width: 100%;
   max-width: 560px;
   margin: 0 auto;
   padding: 8px 16px 28px;
+}
+
+/* On tall screens, balance the header above so the board sits near the middle */
+@media (min-height: 760px) {
+  .game {
+    padding-bottom: 96px;
+  }
 }
 
 .banner {
@@ -252,15 +270,29 @@ a {
   cursor: default;
 }
 
-/* Hinted letters are brass tiles */
+/* Hinted letters are dark gold tiles in a bright brass frame, with a small pin */
 .cell.hinted {
   border: 0;
-  color: var(--walnut);
-  background: linear-gradient(160deg, var(--brass-light), var(--brass));
+  color: var(--chalk);
+  background: linear-gradient(160deg, var(--gold), var(--gold-dark));
   box-shadow:
-    inset 0 -3px 0 var(--brass-edge),
-    0 3px 4px rgba(0, 0, 0, 0.35);
+    inset 0 -3px 0 var(--gold-edge),
+    0 0 0 3px var(--felt-dark),
+    0 0 0 5px var(--brass-light),
+    0 4px 8px 5px rgba(0, 0, 0, 0.3);
   cursor: default;
+}
+
+.cell.hinted::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brass-light);
+  box-shadow: inset 0 -1px 0 var(--gold-edge);
 }
 
 .cell.cursor:not(.filled) {
@@ -479,8 +511,7 @@ a {
   border-radius: 10px;
   color: var(--chalk);
   background:
-    repeating-linear-gradient(0deg, transparent 0 3px, var(--stitch-dark) 3px 4px),
-    repeating-linear-gradient(90deg, transparent 0 3px, var(--stitch-light) 3px 4px), var(--felt-deep);
+    var(--weave), var(--felt-deep);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
