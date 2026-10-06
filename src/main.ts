@@ -581,7 +581,14 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- Buttons ----------
 
-el.hintButton.addEventListener("click", () => setState(useHint(state, Date.now())));
+el.hintButton.addEventListener("click", () => {
+  setState(useHint(state, Date.now()));
+  // The hint may have landed on the highlighted square: move on to the next free one.
+  if (cursor !== null && !isEditable(state, cursor)) cursor = firstEmptyCell(cursor);
+  // The hint may also have used the picked-up tile.
+  if (selectedTile !== null && cellOfTile(state, selectedTile) !== -1) selectedTile = null;
+  render();
+});
 el.clearButton.addEventListener("click", () => {
   setState(clearBoard(state));
   cursor = firstEmptyCell();
