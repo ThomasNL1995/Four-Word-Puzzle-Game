@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="Word Weaver: a daily four-word puzzle." />
+    <meta name="description" content="Weave four hidden words into one frame. A new puzzle every day, with 4, 5 or 6 letter words." />
+    <!-- Link previews (WhatsApp, Discord, iMessage, social media) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Word Weaver" />
+    <meta property="og:title" content="Word Weaver" />
+    <meta property="og:description" content="Weave four hidden words into one frame. A new puzzle every day, with 4, 5 or 6 letter words." />
+    <meta property="og:url" content="https://thomasnl1995.github.io/Four-Word-Puzzle-Game/" />
+    <meta property="og:image" content="https://thomasnl1995.github.io/Four-Word-Puzzle-Game/preview.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Word Weaver: wooden letter tiles spelling WORD, WRAP, DENY and PLAY around a frame on green felt." />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#1e5a43" />
     <title>Word Weaver</title>
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
@@ -31,6 +42,7 @@
 
     <nav class="modes" aria-label="Game mode">
       <button class="mode" id="mode-daily" aria-pressed="true">Daily</button>
+      <button class="mode" id="mode-archive" aria-pressed="false">Archive</button>
       <button class="mode" id="mode-practice" aria-pressed="false">Practice</button>
     </nav>
 
@@ -39,6 +51,11 @@
 
       <div class="toolbar">
         <span class="puzzle-label" id="puzzle-label"></span>
+        <div class="sizes" role="group" aria-label="Word length">
+          <button class="size" data-size-choice="4" aria-pressed="true" aria-label="4 letters">4</button>
+          <button class="size" data-size-choice="5" aria-pressed="false" aria-label="5 letters">5</button>
+          <button class="size" data-size-choice="6" aria-pressed="false" aria-label="6 letters">6</button>
+        </div>
         <button class="link-button" id="pause-button">Pause</button>
       </div>
 
@@ -95,17 +112,26 @@
       <p class="stat-extra" id="stat-extra"></p>
     </dialog>
 
+    <dialog class="dialog" id="archive-dialog" aria-labelledby="archive-title">
+      <button class="icon-button close" data-close aria-label="Close">&times;</button>
+      <h2 id="archive-title">Archive</h2>
+      <p class="archive-intro">Play the daily puzzles you missed. They don't count for your streak.</p>
+      <p class="archive-empty" id="archive-empty" hidden>No past puzzles yet. Come back tomorrow!</p>
+      <div class="archive-list" id="archive-list"></div>
+    </dialog>
+
     <dialog class="dialog" id="help-dialog" aria-labelledby="help-title">
       <button class="icon-button close" data-close aria-label="Close">&times;</button>
       <h2 id="help-title">How to play</h2>
       <p>Find the four hidden words. The top and bottom words read left to right, the left and right words read top to bottom. The corner letters are given.</p>
+      <p>Choose <strong>4, 5 or 6</strong> letter words with the switch above the board. Longer words are harder.</p>
       <ul>
         <li><strong>Drag</strong> a letter onto a square, or <strong>tap</strong> a letter and then a square.</li>
         <li>Drag a placed letter to another square to swap, or off the board to remove it.</li>
         <li>On a keyboard: type letters to fill the highlighted square, Backspace to remove, arrows to move, Enter to submit.</li>
         <li>Stuck? A hint reveals one letter. Try to solve it with as few hints as possible.</li>
       </ul>
-      <p>A new daily puzzle appears every day at midnight. Share your result and challenge your friends!</p>
+      <p>New daily puzzles (one for each word length) appear every day at midnight. Missed one? Find it in the archive. Share your result and challenge your friends!</p>
       <p class="credits">
         Word lists: <a href="http://wordlist.aspell.net/" target="_blank" rel="noopener">SCOWL</a> and
         <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener">wordfreq</a> (CC BY-SA 4.0). Definitions:

@@ -1,0 +1,94 @@
+{
+  "_about": "Triage of 6-letter answer candidates (top 1500 by frequency). 'reject' words never become answers but stay valid for the uniqueness check. 'maybe' words are answers for now; remove any you don't like by moving them to a reject group.",
+  "reject": {
+    "offensive_or_sensitive": [
+      "sexual",
+      "fucked",
+      "pissed",
+      "shitty",
+      "racist",
+      "racial",
+      "racism",
+      "vagina",
+      "orgasm",
+      "fucker",
+      "erotic",
+      "hooker",
+      "rapist",
+      "condom",
+      "fetish",
+      "raping",
+      "sexist",
+      "sexism",
+      "ghetto",
+      "psycho",
+      "autism"
+    ],
+    "proper_noun_or_brand": [
+      "august",
+      "french",
+      "amazon",
+      "google",
+      "martin",
+      "oxford",
+      "miller",
+      "soviet",
+      "cooper",
+      "wright",
+      "turner",
+      "newton",
+      "sierra",
+      "guinea",
+      "tucker",
+      "surrey",
+      "hector",
+      "tanner",
+      "sawyer",
+      "madden",
+      "canton",
+      "afghan"
+    ],
+    "slang_or_abbreviation": [
+      "boogie",
+      "pseudo",
+      "cannot"
+    ],
+    "archaic_or_too_obscure": [
+      "herein",
+      "hereby"
+    ],
+    "plural": [
+      "alumni",
+      "crises",
+      "larvae"
+    ],
+    "british_spelling_duplicate": [
+      "centre",
+      "labour",
+      "colour",
+      "honour",
+      "favour",
+      "armour",
+      "humour",
+      "storey",
+      "fulfil",
+      "learnt"
+    ]
+  },
+  "maybe": [
+    "bloody",
+    "awhile",
+    "madame",
+    "whilst",
+    "wicket",
+    "consul",
+    "corpus",
+    "jasper",
+    "barker",
+    "fisher",
+    "potter",
+    "warren",
+    "sheikh",
+    "heroin"
+  ]
+}

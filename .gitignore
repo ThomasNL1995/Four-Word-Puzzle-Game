@@ -2,3 +2,5 @@ node_modules/
 dist/
 .venv/
 scripts/.cache/
+test-results/
+playwright-report/

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { EDITABLE, type Puzzle } from "./puzzle.ts";
+import { layout, type Puzzle } from "./puzzle.ts";
 import {
   boardLetters,
   cellOfTile,
   clearBoard,
   elapsedMs,
   isSolved,
-  MAX_HINTS,
+  maxHints,
   moveTile,
   newGame,
   pause,
@@ -29,7 +29,7 @@ function tileFor(state: GameState, letter: string, skip: number[] = []): number 
 /** Places the correct letters in all editable cells. */
 function solve(state: GameState): GameState {
   const sol = solution(state);
-  for (const cell of EDITABLE) {
+  for (const cell of layout(state.puzzle[0].length).editable) {
     if (state.cells[cell] !== null) continue;
     state = moveTile(state, tileFor(state, sol[cell]), cell);
   }
@@ -138,16 +138,28 @@ describe("useHint", () => {
     expect(boardLetters(s)[9]).toBe("");
   });
 
-  it("allows at most MAX_HINTS", () => {
+  it("allows at most maxHints", () => {
     let s = newGame(PUZZLE, 0);
     for (let i = 0; i < 10; i++) s = useHint(s, 0);
-    expect(s.hintsUsed).toBe(MAX_HINTS);
+    expect(s.hintsUsed).toBe(maxHints(4));
   });
 
   it("wins when the hint completes the board", () => {
     let s = solve(newGame(PUZZLE, 0));
     s = moveTile(s, s.cells[10]!, null);
     s = useHint(s, 5000);
+    expect(s.status).toBe("won");
+  });
+});
+
+describe("bigger boards", () => {
+  it("plays a 6-letter puzzle", () => {
+    const p: Puzzle = ["STATUE", "STRICT", "STRESS", "EFFORT"];
+    let s = newGame(p, 0);
+    expect(s.tiles).toHaveLength(16);
+    expect(maxHints(6)).toBe(12);
+    s = solve(s);
+    s = submit(s, new Set(p), 1000);
     expect(s.status).toBe("won");
   });
 });
