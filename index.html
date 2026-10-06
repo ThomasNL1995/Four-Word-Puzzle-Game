@@ -1,116 +1,118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Word Weaver: a daily four-word puzzle." />
+    <meta name="theme-color" content="#1c1c1c" />
     <title>Word Weaver</title>
-    <link rel="stylesheet" type="text/css" href="css/style.css" />
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png" />
-    <link rel="manifest" href="site.webmanifest" />
-    <script src="https://kit.fontawesome.com/5140f02e0a.js" crossorigin="anonymous"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="game-container">
-      <header id="header">
-        <i id="menuButton" class="fa-solid fa-bars"></i>
-        <div id="title">
-          <a href="./"><h1>Word Weaver</h1></a>
-        </div>
-        <i id="infoButton" class="fa-solid fa-circle-info"></i>
-        <div id="menu" class="hide">
-          <i id="menu-close-button" class="fa-solid fa-xmark"></i>
-          <h2 class="menu-title">Stats</h2>
-          <div class="menu-body">
-            <ul id="stats">
-              <li>Total Games Played: <span id="totalGamesPlayed">-</span></li>
-              <li>Average hints used: <span id="hintsUsedAverage">-</span></li>
-              <li>Completion time average: <span id="timerAverage">-</span></li>
-              <li>Quickest Completion Time: <span id="quickestComplete">-</span></li>
-              <li>Games Shared: <span id="gamesShared">-</span></li>
-              <li>Challenge Games Played: <span id="challengeGamesPlayed">-</span></li>
-              <li>Challenge Games Won: <span id="challengeGamesWon">-</span></li>
-              <li>Challenge Games Lost: <span id="challengeGamesLost">-</span></li>
-              <li>Challenge Games Winrate: <span id="challengeGamesWinrate">-</span>%</li>
-            </ul>
-          </div>
-        </div>
-      </header>
-      <div id="gameboard">
-        <div id="challenge">
-          You've been challenged by <span id="challengeName">someone</span>. Try to beat their time of <span id="challengeTime">0:00</span>. They used <span id="challengeHints">0</span> hints.
-        </div>
-        <form id="game-form">
-          <div class="flex-wrapper-row">
-            <div id="timer">0:00</div>
-            <a id="pauseButton">Pause Game<i class="fa-solid fa-pause"></i></a>
-          </div>
-          <div id="inputs">
-            <div id="row1"></div>
-            <div id="row2"></div>
-            <div id="row3"></div>
-            <div id="row4"></div>
-            <div id="points-wrap"><span id="currentPoints">900</span> points</div>
-          </div>
-        </form>
-        <div class="availableLettersWrap">
-          <h3 class="av_title">Available letters:</h3>
-          <div id="availableLettersDiv"></div>
-        </div>
-        <div id="button-field">
-          <div id="buttons_row1">
-            <button id="hintButton">Use Hint</button>
-            <div id="hints-info">
-              <div id="hints-remaining">Hints remaining: 6</div>
-              <div id="hints-cost">Hint cost: 0 points</div>
-            </div>
-          </div>
-          <div id="buttons_row2">
-            <button id="submitButton">Submit</button>
-            <button id="clearButton">Clear All</button>
-          </div>
-        </div>
-        <div id="wrongAnswer"></div>
-        <div id="result">
-          <i id="r-close-button" class="fa-solid fa-xmark"></i>
+    <header class="header">
+      <button class="icon-button" id="stats-button" aria-label="Statistics">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V11h3v9H4Zm6.5 0V4h3v16h-3ZM17 20v-6h3v6h-3Z" /></svg>
+      </button>
+      <h1 class="title">Word Weaver</h1>
+      <button class="icon-button" id="help-button" aria-label="How to play">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 16a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm1.2-5.3v.8h-2.4v-1.4c0-1.2.9-1.8 1.6-2.2.6-.4 1-.6 1-1.2 0-.6-.6-1.1-1.4-1.1-.8 0-1.4.5-1.6 1.2l-2.2-.9C8.7 6.6 10.2 5.5 12 5.5c2.2 0 3.8 1.3 3.8 3.2 0 1.7-1.2 2.5-2 3-.4.3-.6.5-.6 1Z"
+          />
+        </svg>
+      </button>
+    </header>
 
-          <h2>You got it!</h2>
-          <p class="definition-info">hover/click over the word to show the definition</p>
-          <div id="resultWords"></div>
+    <nav class="modes" aria-label="Game mode">
+      <button class="mode" id="mode-daily" aria-pressed="true">Daily</button>
+      <button class="mode" id="mode-practice" aria-pressed="false">Practice</button>
+    </nav>
 
-          <p>You guessed the correct words, in a time of <span id="resultTime"></span>, using <span id="resultHints"></span> hints!</p>
-          <p>This earned you <span id="resultPoints"></span> points</p>
-          <p id="challengeResult"></p>
-          <div>
-            <div class="result_buttons">
-              <button id="shareButton">Share this game</button>
-              <button id="restartButton">New Game</button>
-            </div>
-            <div id="share_url"></div>
-          </div>
-        </div>
-        <div id="pausePopup" class="hide">
-          <h2>Game Paused</h2>
-          <p>Press the button below to resume the game.</p>
-          <button id="resumeButton">Resume Game</button>
+    <main class="game">
+      <p class="banner" id="challenge-banner" hidden></p>
+
+      <div class="toolbar">
+        <span class="puzzle-label" id="puzzle-label"></span>
+        <button class="link-button" id="pause-button">Pause</button>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Puzzle board"></div>
+        <div class="pause-overlay" id="pause-overlay" hidden>
+          <p class="pause-title">Paused</p>
+          <button class="button primary" id="resume-button">Resume</button>
         </div>
       </div>
-      <div id="instructions" class="hide">
-        <i id="i-close-button" class="fa-solid fa-xmark"></i>
-        <h2 class="instructions-title">Instructions</h2>
-        <div class="instructions-body">
-          <p>
-            Guess the four words using the available letters. The horizontal words read from left to right. The vertical words read from top to bottom. You can select a letter by clicking on it or by
-            pressing the corresponding letter on your keyboard.
-          </p>
-          <p>After completing a round, you can share it to a friend and challenge them to beat your time!</p>
-        </div>
+
+      <p class="message" id="message" aria-live="polite"></p>
+
+      <div class="tray" id="tray" aria-label="Available letters"></div>
+
+      <div class="actions">
+        <button class="button" id="hint-button">Hint</button>
+        <button class="button" id="clear-button">Clear</button>
+        <button class="button primary" id="submit-button">Submit</button>
       </div>
-    </div>
-    <script src="four-letter-words.js" type="module"></script>
-    <script src="dailyWords.js" type="module"></script>
-    <script src="game.js" type="module"></script>
+    </main>
+
+    <dialog class="dialog" id="result-dialog" aria-labelledby="result-title">
+      <button class="icon-button close" data-close aria-label="Close">&times;</button>
+      <h2 id="result-title">Solved!</h2>
+      <div class="result-words" id="result-words"></div>
+      <p class="definition-hint">Tap a word to see what it means.</p>
+      <p class="definition" id="definition"></p>
+      <dl class="result-stats">
+        <div><dt>Time</dt><dd id="result-time"></dd></div>
+        <div><dt>Hints</dt><dd id="result-hints"></dd></div>
+        <div><dt>Wrong</dt><dd id="result-wrong"></dd></div>
+      </dl>
+      <p class="challenge-result" id="challenge-result" hidden></p>
+      <p class="next-puzzle" id="next-puzzle" hidden>Next puzzle in <span id="countdown"></span></p>
+      <div class="dialog-actions">
+        <button class="button primary" id="share-button" autofocus>Share</button>
+        <button class="button" id="next-button"></button>
+      </div>
+      <p class="share-status" id="share-status" aria-live="polite"></p>
+    </dialog>
+
+    <dialog class="dialog" id="stats-dialog" aria-labelledby="stats-title">
+      <button class="icon-button close" data-close aria-label="Close">&times;</button>
+      <h2 id="stats-title">Statistics</h2>
+      <div class="stat-row">
+        <div class="stat"><span class="stat-value" id="stat-played">0</span><span class="stat-label">Played</span></div>
+        <div class="stat"><span class="stat-value" id="stat-solved">0</span><span class="stat-label">Solved %</span></div>
+        <div class="stat"><span class="stat-value" id="stat-streak">0</span><span class="stat-label">Streak</span></div>
+        <div class="stat"><span class="stat-value" id="stat-max-streak">0</span><span class="stat-label">Max streak</span></div>
+      </div>
+      <h3>Hints used</h3>
+      <div class="distribution" id="distribution"></div>
+      <p class="stat-extra" id="stat-extra"></p>
+    </dialog>
+
+    <dialog class="dialog" id="help-dialog" aria-labelledby="help-title">
+      <button class="icon-button close" data-close aria-label="Close">&times;</button>
+      <h2 id="help-title">How to play</h2>
+      <p>Find the four hidden words. The top and bottom words read left to right, the left and right words read top to bottom. The corner letters are given.</p>
+      <ul>
+        <li><strong>Drag</strong> a letter onto a square, or <strong>tap</strong> a letter and then a square.</li>
+        <li>Drag a placed letter to another square to swap, or off the board to remove it.</li>
+        <li>On a keyboard: type letters to fill the highlighted square, Backspace to remove, arrows to move, Enter to submit.</li>
+        <li>Stuck? A hint reveals one letter. Try to solve it with as few hints as possible.</li>
+      </ul>
+      <p>A new daily puzzle appears every day at midnight. Share your result and challenge your friends!</p>
+      <p class="credits">
+        Word lists: <a href="http://wordlist.aspell.net/" target="_blank" rel="noopener">SCOWL</a> and
+        <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener">wordfreq</a> (CC BY-SA 4.0). Definitions:
+        <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>.
+      </p>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

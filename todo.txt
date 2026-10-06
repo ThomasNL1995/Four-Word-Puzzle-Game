@@ -1,2 +1,0 @@
-points on screen
-challenge won or lost on result screen
