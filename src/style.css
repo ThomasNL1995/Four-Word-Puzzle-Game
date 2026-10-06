@@ -43,9 +43,10 @@
 }
 
 /* Everything is sized in rem, so the whole game scales with the root font size.
-   It grows on big screens, limited by both width and height so it always fits. */
+   It grows gently on big screens (up to about 1.6x), limited by both width and
+   height so it always fits. */
 html {
-  font-size: clamp(16px, min(100vw / 40, 100vh / 50), 34px);
+  font-size: clamp(16px, min(100vw / 48, 100vh / 58), 26px);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   background: var(--felt-dark);
