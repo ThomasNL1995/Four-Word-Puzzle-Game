@@ -1,7 +1,7 @@
-// Player stats and saved progress, kept in localStorage.
+// Player stats and saved progress, kept in localStorage, separately per word length.
 // Every access is wrapped: storage can be unavailable (private mode, blocked cookies).
 
-import { MAX_HINTS, type GameState } from "./state.ts";
+import { maxHints, type GameState } from "./state.ts";
 
 export interface Stats {
   /** Daily puzzles started. */
@@ -18,7 +18,7 @@ export interface Stats {
   practiceSolved: number;
 }
 
-export function emptyStats(): Stats {
+export function emptyStats(size = 4): Stats {
   return {
     played: 0,
     solved: 0,
@@ -26,7 +26,7 @@ export function emptyStats(): Stats {
     maxStreak: 0,
     lastPlayedDay: null,
     lastSolvedDay: null,
-    hintDistribution: new Array(MAX_HINTS + 1).fill(0),
+    hintDistribution: new Array(maxHints(size) + 1).fill(0),
     bestSeconds: null,
     practiceSolved: 0,
   };
@@ -58,11 +58,24 @@ export function liveStreak(stats: Stats, today: number): number {
   return stats.lastSolvedDay !== null && stats.lastSolvedDay >= today - 1 ? stats.currentStreak : 0;
 }
 
+/** A finished daily puzzle (played on its day or later from the archive). */
+export interface DayResult {
+  hints: number;
+  wrong: number;
+  seconds: number;
+}
+
+export type Results = Record<number, DayResult>;
+
+export function recordResult(results: Results, day: number, result: DayResult): Results {
+  if (results[day]) return results; // the first solve counts
+  return { ...results, [day]: result };
+}
+
 // ---------- Storage ----------
 
-const STATS_KEY = "word-weaver:stats";
-const DAILY_KEY = "word-weaver:daily";
-const PRACTICE_KEY = "word-weaver:practice";
+// 4-letter data keeps the original keys, so existing players keep their stats.
+const key = (name: string, size: number) => `word-weaver:${name}${size === 4 ? "" : `:${size}`}`;
 
 function read<T>(key: string): T | null {
   try {
@@ -81,36 +94,61 @@ function write(key: string, value: unknown): void {
   }
 }
 
-export function loadStats(): Stats {
-  return { ...emptyStats(), ...read<Partial<Stats>>(STATS_KEY) };
+export function loadStats(size: number): Stats {
+  return { ...emptyStats(size), ...read<Partial<Stats>>(key("stats", size)) };
 }
 
-export function saveStats(stats: Stats): void {
-  write(STATS_KEY, stats);
+export function saveStats(size: number, stats: Stats): void {
+  write(key("stats", size), stats);
 }
 
-export interface SavedDaily {
-  day: number;
+export function loadResults(size: number): Results {
+  return read<Results>(key("results", size)) ?? {};
+}
+
+export function saveResults(size: number, results: Results): void {
+  write(key("results", size), results);
+}
+
+/** A game in progress: `id` is the day number (daily, archive) or puzzle index (practice). */
+export interface SavedGame {
+  id: number;
   state: GameState;
 }
 
-export interface SavedPractice {
-  index: number;
+export type SaveSlot = "daily" | "archive" | "practice";
+
+interface LegacySaved {
+  day?: number;
+  index?: number;
+  id?: number;
   state: GameState;
 }
 
-export function loadDaily(): SavedDaily | null {
-  return read<SavedDaily>(DAILY_KEY);
+export function loadGame(slot: SaveSlot, size: number): SavedGame | null {
+  const saved = read<LegacySaved>(key(slot, size));
+  if (!saved) return null;
+  // Older saves used "day" / "index" instead of "id".
+  const id = saved.id ?? saved.day ?? saved.index;
+  return id === undefined ? null : { id, state: saved.state };
 }
 
-export function saveDaily(saved: SavedDaily): void {
-  write(DAILY_KEY, saved);
+export function saveGame(slot: SaveSlot, size: number, saved: SavedGame): void {
+  write(key(slot, size), saved);
 }
 
-export function loadPractice(): SavedPractice | null {
-  return read<SavedPractice>(PRACTICE_KEY);
+export function loadSetting(name: string): string | null {
+  try {
+    return localStorage.getItem(`word-weaver:${name}`);
+  } catch {
+    return null;
+  }
 }
 
-export function savePractice(saved: SavedPractice): void {
-  write(PRACTICE_KEY, saved);
+export function saveSetting(name: string, value: string): void {
+  try {
+    localStorage.setItem(`word-weaver:${name}`, value);
+  } catch {
+    // ignore
+  }
 }

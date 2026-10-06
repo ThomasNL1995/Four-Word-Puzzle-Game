@@ -1,9 +1,12 @@
 // Pure game logic. Every action takes a state and returns a new state; nothing here
 // touches the DOM, so it is easy to test and to save/restore as JSON.
 
-import { CELL_COUNT, CORNERS, EDITABLE, LINE_NAMES, solutionLetters, wordsOnBoard, type LineName, type Puzzle } from "./puzzle.ts";
+import { layout, LINE_NAMES, solutionLetters, wordsOnBoard, type Layout, type LineName, type Puzzle } from "./puzzle.ts";
 
-export const MAX_HINTS = 6;
+/** Hints per board: three per side, so at least a quarter of the letters are yours. */
+export function maxHints(size: number): number {
+  return (size - 2) * 3;
+}
 
 export type Status = "playing" | "paused" | "won";
 
@@ -45,10 +48,10 @@ export function newGame(puzzle: Puzzle, now: number, random: () => number = Math
   return {
     puzzle,
     tiles: shuffle(
-      EDITABLE.map((cell) => solution[cell]),
+      layout(puzzle[0].length).editable.map((cell) => solution[cell]),
       random
     ),
-    cells: new Array(CELL_COUNT).fill(null),
+    cells: new Array(layout(puzzle[0].length).cellCount).fill(null),
     hinted: [],
     hintsUsed: 0,
     wrongSubmits: 0,
@@ -61,6 +64,14 @@ export function newGame(puzzle: Puzzle, now: number, random: () => number = Math
 
 // ---------- Queries ----------
 
+export function size(state: GameState): number {
+  return state.puzzle[0].length;
+}
+
+export function boardLayout(state: GameState): Layout {
+  return layout(size(state));
+}
+
 export function solution(state: GameState): string[] {
   return solutionLetters(state.puzzle);
 }
@@ -68,7 +79,8 @@ export function solution(state: GameState): string[] {
 /** The letter shown in each cell ("" when empty). */
 export function boardLetters(state: GameState): string[] {
   const sol = solution(state);
-  return state.cells.map((tile, cell) => (CORNERS.includes(cell) ? sol[cell] : tile === null ? "" : state.tiles[tile]));
+  const { corners } = boardLayout(state);
+  return state.cells.map((tile, cell) => (corners.includes(cell) ? sol[cell] : tile === null ? "" : state.tiles[tile]));
 }
 
 /** Cell index of a tile, or -1 when it is in the tray. */
@@ -77,7 +89,7 @@ export function cellOfTile(state: GameState, tile: number): number {
 }
 
 export function isEditable(state: GameState, cell: number): boolean {
-  return EDITABLE.includes(cell) && !state.hinted.includes(cell);
+  return boardLayout(state).editable.includes(cell) && !state.hinted.includes(cell);
 }
 
 export function isTileLocked(state: GameState, tile: number): boolean {
@@ -95,7 +107,7 @@ export function isSolved(state: GameState): boolean {
 }
 
 export function hintsLeft(state: GameState): number {
-  return MAX_HINTS - state.hintsUsed;
+  return maxHints(size(state)) - state.hintsUsed;
 }
 
 // ---------- Actions ----------
@@ -138,7 +150,7 @@ export function useHint(state: GameState, now: number, random: () => number = Ma
 
   const sol = solution(state);
   const letters = boardLetters(state);
-  const targets = EDITABLE.filter((cell) => !state.hinted.includes(cell) && letters[cell] !== sol[cell]);
+  const targets = boardLayout(state).editable.filter((cell) => !state.hinted.includes(cell) && letters[cell] !== sol[cell]);
   if (targets.length === 0) return state;
 
   const cell = targets[Math.floor(random() * targets.length)];
@@ -175,7 +187,7 @@ export function submit(state: GameState, validWords: ReadonlySet<string>, now: n
   if (letters.some((letter) => letter === "")) return { ...state, feedback: { kind: "incomplete" } };
   if (isSolved(state)) return win(state, now);
 
-  const words = wordsOnBoard(letters);
+  const words = wordsOnBoard(letters, size(state));
   const [top, bottom, left, right] = state.puzzle;
   const answer: Record<LineName, string> = { top, bottom, left, right };
   const correctLines = LINE_NAMES.filter((line) => words[line] === answer[line]);

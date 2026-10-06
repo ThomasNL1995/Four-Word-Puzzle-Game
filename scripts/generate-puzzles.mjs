@@ -1,14 +1,17 @@
-// Generates the ordered puzzle list used by the game.
+// Generates the ordered puzzle lists used by the game, per word length.
 //
-//   node scripts/generate-puzzles.mjs
+//   node scripts/generate-puzzles.mjs 5      # one length
+//   node scripts/generate-puzzles.mjs        # 4, 5 and 6
 //
-// Reads scripts/answer-words.json and src/data/valid-words.json (see build-wordlists.py),
-// writes src/data/puzzles.json: { daily: Puzzle[], practice: Puzzle[] }
+// Reads scripts/words/<n>/answers.json and src/data/<n>/valid-words.json (see
+// build-wordlists.py), writes src/data/<n>/puzzles.json: { daily: Puzzle[], practice: Puzzle[] }
 // where Puzzle = [top, bottom, left, right].
+// The output only depends on the inputs (seeded random), so re-running it with the same
+// word lists gives the same puzzles.
 //
 // Rules for every puzzle:
 //  - all four words come from the answer list, all different
-//  - exactly one solution: no other grid with the same corners and the same 8 letters
+//  - exactly one solution: no other grid with the same corners and the same letters
 //    can be made from the (bigger) valid word list
 //  - at most one "hard" word (low frequency)
 // Rules for the daily order:
@@ -27,8 +30,14 @@ const HARD_ZIPF = 3.3;
 const SEED = 20231;
 
 const root = new URL("..", import.meta.url);
-const answers = JSON.parse(readFileSync(new URL("scripts/answer-words.json", root), "utf8"));
-const valid = JSON.parse(readFileSync(new URL("src/data/valid-words.json", root), "utf8"));
+
+for (const size of process.argv.length > 2 ? process.argv.slice(2).map(Number) : [4, 5, 6]) {
+  generate(size);
+}
+
+function generate(size) {
+const answers = JSON.parse(readFileSync(new URL(`scripts/words/${size}/answers.json`, root), "utf8"));
+const valid = JSON.parse(readFileSync(new URL(`src/data/${size}/valid-words.json`, root), "utf8"));
 const zipf = new Map(answers.map(([w, z]) => [w, z]));
 const answerWords = answers.map(([w]) => w);
 
@@ -44,7 +53,7 @@ const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 
 const byEnds = new Map();
 for (const w of answerWords) {
-  const key = w[0] + w[3];
+  const key = w[0] + w[size - 1];
   if (!byEnds.has(key)) byEnds.set(key, []);
   byEnds.get(key).push(w);
 }
@@ -61,7 +70,7 @@ while (pool.size < POOL_TARGET && attempts < POOL_TARGET * 40) {
   const top = pick(answerWords);
   const bottom = pick(answerWords);
   const lefts = byEnds.get(top[0] + bottom[0]);
-  const rights = byEnds.get(top[3] + bottom[3]);
+  const rights = byEnds.get(top[size - 1] + bottom[size - 1]);
   if (!lefts || !rights) continue;
   const p = [top, bottom, pick(lefts), pick(rights)];
   if (new Set(p).size < 4) continue;
@@ -71,7 +80,7 @@ while (pool.size < POOL_TARGET && attempts < POOL_TARGET * 40) {
   if (countSolutions(p, valid, 2) !== 1) continue;
   pool.set(key, p);
 }
-console.log(`pool: ${pool.size} unique puzzles from ${attempts} attempts`);
+console.log(`${size} letters, pool: ${pool.size} unique puzzles from ${attempts} attempts`);
 
 // 2. Order the daily puzzles.
 const candidates = [...pool.values()];
@@ -134,4 +143,5 @@ console.log(
     `max uses per word: ${Math.max(...counts)}`
 );
 
-writeFileSync(new URL("src/data/puzzles.json", root), JSON.stringify({ daily, practice }));
+writeFileSync(new URL(`src/data/${size}/puzzles.json`, root), JSON.stringify({ daily, practice }));
+}

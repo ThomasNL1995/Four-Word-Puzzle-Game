@@ -11,9 +11,11 @@
     "typecheck": "tsc --noEmit",
     "words": ".venv/bin/python scripts/build-wordlists.py",
     "puzzles": "node scripts/generate-puzzles.mjs",
-    "definitions": "node scripts/build-definitions.mjs"
+    "definitions": "node scripts/build-definitions.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.3",

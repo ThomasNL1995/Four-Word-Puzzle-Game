@@ -1,11 +1,19 @@
 import "./style.css";
 
-import validWordList from "./data/valid-words.json";
-import { dailyPuzzle, msUntilNextPuzzle, practicePuzzles, puzzleNumber } from "./daily.ts";
+import {
+  dailyPuzzle,
+  loadDefinitions,
+  loadPuzzleSet,
+  msUntilNextPuzzle,
+  puzzleDate,
+  puzzleNumber,
+  type PuzzleSet,
+} from "./daily.ts";
 import { enablePointerInput } from "./dragdrop.ts";
-import { CELL_COUNT, CORNERS, EDITABLE, LINES, type Puzzle } from "./puzzle.ts";
+import { layout, SIZES } from "./puzzle.ts";
 import { decodeChallenge, encodeChallenge, formatTime, shareText, type Challenge, type PuzzleRef } from "./share.ts";
 import {
+  boardLayout,
   boardLetters,
   cellOfTile,
   clearBoard,
@@ -23,17 +31,20 @@ import {
 } from "./state.ts";
 import {
   liveStreak,
-  loadDaily,
-  loadPractice,
+  loadGame,
+  loadResults,
+  loadSetting,
   loadStats,
   recordDailyStart,
   recordDailyWin,
-  saveDaily,
-  savePractice,
+  recordResult,
+  saveGame,
+  saveResults,
+  saveSetting,
   saveStats,
+  type Results,
+  type Stats,
 } from "./stats.ts";
-
-const validWords = new Set<string>(validWordList);
 
 // ---------- DOM ----------
 
@@ -46,7 +57,9 @@ const el = {
   puzzleLabel: $("puzzle-label"),
   banner: $("challenge-banner"),
   modeDaily: $<HTMLButtonElement>("mode-daily"),
+  modeArchive: $<HTMLButtonElement>("mode-archive"),
   modePractice: $<HTMLButtonElement>("mode-practice"),
+  sizeButtons: [...document.querySelectorAll<HTMLButtonElement>("[data-size-choice]")],
   pauseButton: $<HTMLButtonElement>("pause-button"),
   pauseOverlay: $("pause-overlay"),
   resumeButton: $<HTMLButtonElement>("resume-button"),
@@ -67,55 +80,50 @@ const el = {
   nextButton: $<HTMLButtonElement>("next-button"),
   shareStatus: $("share-status"),
   statsDialog: $<HTMLDialogElement>("stats-dialog"),
+  statsTitle: $("stats-title"),
   helpDialog: $<HTMLDialogElement>("help-dialog"),
+  archiveDialog: $<HTMLDialogElement>("archive-dialog"),
+  archiveTitle: $("archive-title"),
+  archiveList: $("archive-list"),
+  archiveEmpty: $("archive-empty"),
 };
-
-// Board cells: 12 cells placed on a 4x4 grid (the middle 4 positions stay empty).
-const cellEls: HTMLElement[] = [];
-const GRID_POS = [
-  [1, 1], [1, 2], [1, 3], [1, 4],
-  [2, 1], [2, 4],
-  [3, 1], [3, 4],
-  [4, 1], [4, 2], [4, 3], [4, 4],
-];
-for (let cell = 0; cell < CELL_COUNT; cell++) {
-  const div = document.createElement("div");
-  div.className = "cell";
-  div.dataset.cell = String(cell);
-  div.setAttribute("role", "gridcell");
-  div.style.gridRow = String(GRID_POS[cell][0]);
-  div.style.gridColumn = String(GRID_POS[cell][1]);
-  el.board.appendChild(div);
-  cellEls.push(div);
-}
 
 // ---------- App state ----------
 
-type Mode = { kind: "daily"; day: number } | { kind: "practice"; index: number } | { kind: "challenge"; ref: PuzzleRef };
+type Mode = "daily" | "archive" | "practice";
 
-let mode: Mode;
+let size = Number(loadSetting("size")) || 4;
+if (!SIZES.includes(size as (typeof SIZES)[number])) size = 4;
+let set: PuzzleSet;
+let mode: Mode = "daily";
+/** Day number (daily, archive) or puzzle index (practice). */
+let gameId = 0;
 let state: GameState;
-let stats = loadStats();
+let stats: Stats;
+let results: Results;
 let challenge: Challenge | null = null;
 let selectedTile: number | null = null;
 let cursor: number | null = null;
 let toast = "";
 let trayKey = "";
+let boardSize = 0;
+let cellEls: HTMLElement[] = [];
+/** Increases with every game start, so a slow data load can't start an outdated game. */
+let startToken = 0;
 
 const today = () => puzzleNumber(new Date());
 
 function currentRef(): PuzzleRef {
-  if (mode.kind === "daily") return { kind: "daily", number: mode.day };
-  if (mode.kind === "practice") return { kind: "practice", index: mode.index };
-  return mode.ref;
+  return mode === "practice" ? { kind: "practice", size, index: gameId } : { kind: "daily", size, number: gameId };
 }
 
-function puzzleFor(ref: PuzzleRef): Puzzle {
-  return ref.kind === "daily" ? dailyPuzzle(ref.number) : practicePuzzles[ref.index];
+function sizeSuffix(n: number) {
+  return n === 4 ? "" : ` · ${n} letters`;
 }
 
 function refTitle(ref: PuzzleRef): string {
-  return ref.kind === "daily" ? `Word Weaver #${ref.number}` : `Word Weaver Practice #${ref.index + 1}`;
+  const name = ref.kind === "daily" ? `Word Weaver #${ref.number}` : `Word Weaver Practice #${ref.index + 1}`;
+  return name + sizeSuffix(ref.size);
 }
 
 /**
@@ -132,14 +140,48 @@ function snapshot(s: GameState): GameState {
 }
 
 function persist() {
-  if (mode.kind === "daily") saveDaily({ day: mode.day, state: snapshot(state) });
-  else if (mode.kind === "practice") savePractice({ index: mode.index, state: snapshot(state) });
+  if (state) saveGame(mode, size, { id: gameId, state: snapshot(state) });
+}
+
+// ---------- Board ----------
+
+function buildBoard() {
+  if (boardSize === size) return;
+  boardSize = size;
+  const { cellCount, positions } = layout(size);
+  document.documentElement.dataset.size = String(size);
+  el.board.style.setProperty("--n", String(size));
+  cellEls = Array.from({ length: cellCount }, (_, cell) => {
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.dataset.cell = String(cell);
+    div.setAttribute("role", "gridcell");
+    div.style.gridRow = String(positions[cell][0] + 1);
+    div.style.gridColumn = String(positions[cell][1] + 1);
+    return div;
+  });
+  el.board.replaceChildren(...cellEls);
+  trayKey = "";
 }
 
 // ---------- Starting games ----------
 
-function startGame(nextMode: Mode, nextState: GameState) {
+async function useSize(n: number): Promise<boolean> {
+  const token = ++startToken;
+  const loaded = await loadPuzzleSet(n);
+  if (token !== startToken) return false;
+  size = n;
+  set = loaded;
+  stats = loadStats(size);
+  results = loadResults(size);
+  saveSetting("size", String(size));
+  buildBoard();
+  return true;
+}
+
+function startGame(nextMode: Mode, id: number, nextState: GameState) {
   mode = nextMode;
+  gameId = id;
   state = nextState;
   selectedTile = null;
   cursor = firstEmptyCell();
@@ -150,28 +192,38 @@ function startGame(nextMode: Mode, nextState: GameState) {
   if (state.status === "won") showResult();
 }
 
-function startDaily() {
+async function startDaily(n = size) {
+  if (!(await useSize(n))) return;
   const day = today();
-  const saved = loadDaily();
-  const game = saved?.day === day ? restore(saved.state) : newGame(dailyPuzzle(day), Date.now());
+  const saved = loadGame("daily", size);
+  const game = saved?.id === day ? restore(saved.state) : newGame(dailyPuzzle(set, day), Date.now());
   stats = recordDailyStart(stats, day);
-  saveStats(stats);
-  startGame({ kind: "daily", day }, game);
+  saveStats(size, stats);
+  startGame("daily", day, game);
 }
 
-function startPractice(forceNew = false) {
-  const saved = loadPractice();
-  if (!forceNew && saved && saved.state.status !== "won") {
-    startGame({ kind: "practice", index: saved.index }, restore(saved.state));
+async function startArchive(day: number, n = size) {
+  if (!(await useSize(n))) return;
+  const saved = loadGame("archive", size);
+  const game = saved?.id === day ? restore(saved.state) : newGame(dailyPuzzle(set, day), Date.now());
+  startGame("archive", day, game);
+}
+
+async function startPractice(n = size, options: { forceNew?: boolean; index?: number } = {}) {
+  if (!(await useSize(n))) return;
+  const saved = loadGame("practice", size);
+  if (options.index !== undefined) {
+    const game = saved?.id === options.index ? restore(saved.state) : newGame(set.practice[options.index], Date.now());
+    startGame("practice", options.index, game);
     return;
   }
-  let index = Math.floor(Math.random() * practicePuzzles.length);
-  if (saved && index === saved.index) index = (index + 1) % practicePuzzles.length;
-  startGame({ kind: "practice", index }, newGame(practicePuzzles[index], Date.now()));
-}
-
-function startChallenge(ref: PuzzleRef) {
-  startGame({ kind: "challenge", ref }, newGame(puzzleFor(ref), Date.now()));
+  if (!options.forceNew && saved && saved.state.status !== "won") {
+    startGame("practice", saved.id, restore(saved.state));
+    return;
+  }
+  let index = Math.floor(Math.random() * set.practice.length);
+  if (saved && index === saved.id) index = (index + 1) % set.practice.length;
+  startGame("practice", index, newGame(set.practice[index], Date.now()));
 }
 
 function leaveChallenge() {
@@ -198,15 +250,23 @@ function setState(next: GameState) {
 
 function recordWin() {
   const seconds = Math.round(state.elapsedMs / 1000);
-  if (mode.kind === "daily") stats = recordDailyWin(stats, mode.day, state.hintsUsed, seconds);
-  else if (mode.kind === "practice") stats = { ...stats, practiceSolved: stats.practiceSolved + 1 };
-  saveStats(stats);
+  const result = { hints: state.hintsUsed, wrong: state.wrongSubmits, seconds };
+  if (mode === "daily") {
+    stats = recordDailyWin(stats, gameId, state.hintsUsed, seconds);
+    results = recordResult(results, gameId, result);
+  } else if (mode === "archive") {
+    results = recordResult(results, gameId, result);
+  } else {
+    stats = { ...stats, practiceSolved: stats.practiceSolved + 1 };
+  }
+  saveStats(size, stats);
+  saveResults(size, results);
   selectedTile = null;
   cursor = null;
 }
 
 function firstEmptyCell(from = -1): number | null {
-  const editable = EDITABLE.filter((cell) => isEditable(state, cell));
+  const editable = boardLayout(state).editable.filter((cell) => isEditable(state, cell));
   if (editable.length === 0) return null;
   const start = editable.findIndex((cell) => cell > from);
   const ordered = start === -1 ? editable : [...editable.slice(start), ...editable.slice(0, start)];
@@ -235,15 +295,16 @@ function feedbackText(): string {
 
 function render() {
   const letters = boardLetters(state);
+  const { corners, lines } = boardLayout(state);
   const playing = state.status === "playing";
   const correctCells = new Set<number>();
   if (state.feedback && "correctLines" in state.feedback) {
-    for (const line of state.feedback.correctLines) LINES[line].forEach((c) => correctCells.add(c));
+    for (const line of state.feedback.correctLines) lines[line].forEach((c) => correctCells.add(c));
   }
 
   cellEls.forEach((div, cell) => {
     const tile = state.cells[cell];
-    const corner = CORNERS.includes(cell);
+    const corner = corners.includes(cell);
     const hinted = state.hinted.includes(cell);
     div.textContent = letters[cell];
     div.classList.toggle("corner", corner);
@@ -270,11 +331,12 @@ function render() {
   el.pauseButton.textContent = state.status === "paused" ? "Resume" : "Pause";
   el.pauseOverlay.hidden = state.status !== "paused";
 
-  const ref = currentRef();
   el.puzzleLabel.textContent =
-    (mode.kind === "challenge" ? "Challenge: " : "") + (ref.kind === "daily" ? `#${ref.number}` : `Practice #${ref.index + 1}`);
-  el.modeDaily.setAttribute("aria-pressed", String(mode.kind === "daily"));
-  el.modePractice.setAttribute("aria-pressed", String(mode.kind === "practice"));
+    mode === "practice" ? `Practice #${gameId + 1}` : mode === "archive" ? `#${gameId} · ${shortDate(gameId)}` : `#${gameId}`;
+  el.modeDaily.setAttribute("aria-pressed", String(mode === "daily"));
+  el.modeArchive.setAttribute("aria-pressed", String(mode === "archive"));
+  el.modePractice.setAttribute("aria-pressed", String(mode === "practice"));
+  el.sizeButtons.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.sizeChoice) === size)));
 
   el.banner.hidden = !challenge;
   if (challenge) {
@@ -309,6 +371,10 @@ function renderTray() {
   });
 }
 
+function shortDate(day: number) {
+  return puzzleDate(day).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 function flash(text: string) {
   toast = text;
   el.message.textContent = text;
@@ -330,9 +396,8 @@ function closeDialogs() {
 
 function showResult() {
   if (state.status !== "won") return;
-  const ref = currentRef();
   const seconds = Math.round(state.elapsedMs / 1000);
-  el.resultTitle.textContent = ref.kind === "daily" ? `Solved #${ref.number}!` : "Solved!";
+  el.resultTitle.textContent = mode === "practice" ? "Solved!" : `Solved #${gameId}!`;
   el.resultTime.textContent = formatTime(seconds);
   el.resultHints.textContent = String(state.hintsUsed);
   el.resultWrong.textContent = String(state.wrongSubmits);
@@ -364,10 +429,10 @@ function showResult() {
         : `Your friend wins this one (${challenge.hints} hints, ${formatTime(challenge.seconds)}).`;
   }
 
-  el.nextPuzzle.hidden = mode.kind !== "daily";
-  el.nextButton.textContent = mode.kind === "practice" ? "Next puzzle" : mode.kind === "daily" ? "Practice" : "Today's puzzle";
+  el.nextPuzzle.hidden = mode !== "daily";
+  el.nextButton.textContent = mode === "practice" ? "Next puzzle" : mode === "archive" ? "More puzzles" : "Practice";
   clearInterval(countdownTimer);
-  if (mode.kind === "daily") {
+  if (mode === "daily") {
     const tick = () => {
       const ms = msUntilNextPuzzle(new Date());
       const h = Math.floor(ms / 3_600_000);
@@ -382,17 +447,11 @@ function showResult() {
   if (!el.resultDialog.open) el.resultDialog.showModal();
 }
 
-type Definition = { pos: string; text: string };
-let definitions: Promise<Record<string, Definition>> | null = null;
-
 async function showDefinition(word: string) {
-  // Bundled with the game (from WordNet), loaded on first use as a separate chunk.
-  definitions ??= import("./data/definitions.json").then((m) => m.default as Record<string, Definition>);
   try {
-    const def = (await definitions)[word];
+    const def = (await loadDefinitions(word.length))[word];
     el.definition.textContent = def ? `${word} (${def.pos}): ${def.text}` : `${word}: no definition available.`;
   } catch {
-    definitions = null; // e.g. the chunk failed to load while offline; try again next tap
     el.definition.textContent = "Couldn't load the definition. Check your connection and try again.";
   }
 }
@@ -404,6 +463,7 @@ async function share() {
   url.searchParams.set("c", encodeChallenge({ ref, hints: state.hintsUsed, seconds }));
   const text = shareText({
     title: refTitle(ref),
+    size,
     hinted: state.hinted,
     hints: state.hintsUsed,
     wrongSubmits: state.wrongSubmits,
@@ -428,15 +488,18 @@ async function share() {
   }
 }
 
+// ---------- Stats and archive dialogs ----------
+
 function showStats() {
   const day = today();
+  el.statsTitle.textContent = `Statistics${sizeSuffix(size)}`;
   $("stat-played").textContent = String(stats.played);
   $("stat-solved").textContent = stats.played ? String(Math.round((stats.solved / stats.played) * 100)) : "0";
   $("stat-streak").textContent = String(liveStreak(stats, day));
   $("stat-max-streak").textContent = String(stats.maxStreak);
 
   const max = Math.max(1, ...stats.hintDistribution);
-  const solvedToday = stats.lastSolvedDay === day ? loadDaily()?.state.hintsUsed : undefined;
+  const solvedToday = stats.lastSolvedDay === day ? results[day]?.hints : undefined;
   $("distribution").replaceChildren(
     ...stats.hintDistribution.map((count, hints) => {
       const row = document.createElement("div");
@@ -452,11 +515,42 @@ function showStats() {
       return row;
     })
   );
+  const archiveSolved = Object.keys(results).filter((d) => Number(d) < day).length;
   const extra = [];
   if (stats.bestSeconds !== null) extra.push(`Fastest daily: ${formatTime(stats.bestSeconds)}`);
+  if (archiveSolved) extra.push(`Past puzzles solved: ${archiveSolved}`);
   if (stats.practiceSolved) extra.push(`Practice puzzles solved: ${stats.practiceSolved}`);
   $("stat-extra").textContent = extra.join(" · ");
   el.statsDialog.showModal();
+}
+
+function showArchive() {
+  const last = today() - 1;
+  const inProgress = loadGame("archive", size);
+  el.archiveTitle.textContent = `Archive${sizeSuffix(size)}`;
+  el.archiveEmpty.hidden = last >= 1;
+  el.archiveList.replaceChildren(
+    ...Array.from({ length: Math.max(0, last) }, (_, i) => {
+      const day = last - i;
+      const result = results[day];
+      const started = !result && inProgress?.id === day && inProgress.state.status !== "won";
+      const button = document.createElement("button");
+      button.className = "archive-day" + (result ? " solved" : started ? " started" : "");
+      const status = result
+        ? `${result.hints === 0 ? "No hints" : result.hints === 1 ? "1 hint" : `${result.hints} hints`}`
+        : started
+          ? "In progress"
+          : "Not played";
+      button.innerHTML = `<span class="archive-number">#${day}</span><span class="archive-date">${shortDate(day)}</span><span class="archive-status">${status}</span>`;
+      button.setAttribute("aria-label", `Puzzle ${day}, ${shortDate(day)}, ${status}`);
+      button.addEventListener("click", () => {
+        leaveChallenge();
+        startArchive(day);
+      });
+      return button;
+    })
+  );
+  el.archiveDialog.showModal();
 }
 
 // ---------- Input: taps and drag and drop ----------
@@ -514,21 +608,18 @@ enablePointerInput({
 
 // ---------- Input: keyboard ----------
 
-// Grid positions, used to move the cursor with the arrow keys.
-const POS = GRID_POS.map(([r, c]) => [r - 1, c - 1]);
-const cellAt = (r: number, c: number) => POS.findIndex(([pr, pc]) => pr === r && pc === c);
-
 function moveCursor(dr: number, dc: number) {
+  const { editable, positions } = boardLayout(state);
   if (cursor === null) {
-    cursor = firstEmptyCell() ?? EDITABLE.find((c) => isEditable(state, c)) ?? null;
+    cursor = firstEmptyCell() ?? editable.find((c) => isEditable(state, c)) ?? null;
     return;
   }
-  let [r, c] = POS[cursor];
+  let [r, c] = positions[cursor];
   for (;;) {
     r += dr;
     c += dc;
-    if (r < 0 || r > 3 || c < 0 || c > 3) return;
-    const cell = cellAt(r, c);
+    if (r < 0 || r >= size || c < 0 || c >= size) return;
+    const cell = positions.findIndex(([pr, pc]) => pr === r && pc === c);
     if (cell !== -1 && isEditable(state, cell)) {
       cursor = cell;
       return;
@@ -553,7 +644,7 @@ function typeLetter(letter: string) {
 function backspace() {
   if (cursor === null) return;
   if (state.cells[cursor] === null || !isEditable(state, cursor)) {
-    const editable = EDITABLE.filter((c) => isEditable(state, c));
+    const editable = boardLayout(state).editable.filter((c) => isEditable(state, c));
     const before = editable.filter((c) => c < cursor!);
     cursor = before.length ? before[before.length - 1] : cursor;
   }
@@ -563,12 +654,12 @@ function backspace() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
+  if (!state || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
   if (state.status !== "playing") return;
   const key = e.key;
   if (/^[a-zA-Z]$/.test(key)) typeLetter(key.toUpperCase());
   else if (key === "Backspace" || key === "Delete") backspace();
-  else if (key === "Enter") setState(submit(state, validWords, Date.now()));
+  else if (key === "Enter") setState(submit(state, set.valid, Date.now()));
   else if (key === "ArrowLeft") moveCursor(0, -1);
   else if (key === "ArrowRight") moveCursor(0, 1);
   else if (key === "ArrowUp") moveCursor(-1, 0);
@@ -595,7 +686,7 @@ el.clearButton.addEventListener("click", () => {
   render();
 });
 el.submitButton.addEventListener("click", () => {
-  const next = submit(state, validWords, Date.now());
+  const next = submit(state, set.valid, Date.now());
   setState(next);
   if (next.feedback?.kind === "wrong" || next.feedback?.kind === "real-words") shake();
 });
@@ -608,18 +699,30 @@ el.modeDaily.addEventListener("click", () => {
   leaveChallenge();
   startDaily();
 });
+el.modeArchive.addEventListener("click", showArchive);
 el.modePractice.addEventListener("click", () => {
   leaveChallenge();
   startPractice();
 });
+el.sizeButtons.forEach((button) =>
+  button.addEventListener("click", () => {
+    const n = Number(button.dataset.sizeChoice);
+    if (n === size) return;
+    leaveChallenge();
+    if (mode === "practice") startPractice(n);
+    else startDaily(n);
+  })
+);
 
 el.shareButton.addEventListener("click", share);
 el.nextButton.addEventListener("click", () => {
-  const wasChallenge = mode.kind === "challenge";
   leaveChallenge();
-  if (mode.kind === "daily") startPractice();
-  else if (wasChallenge) startDaily();
-  else startPractice(true);
+  if (mode === "daily") startPractice();
+  else if (mode === "archive") {
+    el.resultDialog.close();
+    showArchive();
+  }
+  else startPractice(size, { forceNew: true });
 });
 
 $("stats-button").addEventListener("click", showStats);
@@ -636,40 +739,35 @@ el.resultDialog.addEventListener("close", () => clearInterval(countdownTimer));
 
 // Don't let the clock run while the tab is hidden.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && state.status === "playing") setState(pause(state, Date.now()));
+  if (document.hidden && state?.status === "playing") setState(pause(state, Date.now()));
 });
 window.addEventListener("pagehide", persist);
 
 // ---------- Boot ----------
 
-function boot() {
+async function boot() {
   const code = new URLSearchParams(location.search).get("c");
   const decoded = code ? decodeChallenge(code) : null;
-  const valid =
-    decoded &&
-    (decoded.ref.kind === "daily"
-      ? decoded.ref.number >= 1 && decoded.ref.number <= today()
-      : decoded.ref.index >= 0 && decoded.ref.index < practicePuzzles.length);
-
-  if (!decoded || !valid) {
-    if (code) leaveChallenge();
-    startDaily();
-    return;
+  if (decoded && SIZES.includes(decoded.ref.size as (typeof SIZES)[number])) {
+    const { ref } = decoded;
+    const loaded = await loadPuzzleSet(ref.size);
+    const valid = ref.kind === "daily" ? ref.number >= 1 && ref.number <= today() : ref.index >= 0 && ref.index < loaded.practice.length;
+    if (valid) {
+      challenge = decoded;
+      // Today's daily stays a normal daily (so it counts for your streak), with the friend's score shown.
+      if (ref.kind === "practice") return startPractice(ref.size, { index: ref.index });
+      if (ref.number === today()) return startDaily(ref.size);
+      return startArchive(ref.number, ref.size);
+    }
   }
-  challenge = decoded;
-  // Today's daily stays a normal daily (so it counts for your streak), with the friend's score shown.
-  if (decoded.ref.kind === "daily" && decoded.ref.number === today()) startDaily();
-  else startChallenge(decoded.ref);
+  if (code) leaveChallenge();
+  return startDaily();
 }
 
 boot();
 
 // First visit: explain the game.
-try {
-  if (!localStorage.getItem("word-weaver:seen-help")) {
-    localStorage.setItem("word-weaver:seen-help", "1");
-    el.helpDialog.showModal();
-  }
-} catch {
-  // No storage: skip the automatic help.
+if (!loadSetting("seen-help")) {
+  saveSetting("seen-help", "1");
+  el.helpDialog.showModal();
 }
