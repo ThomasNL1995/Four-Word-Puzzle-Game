@@ -114,6 +114,8 @@ let results: Results;
 let challenge: Challenge | null = null;
 let selectedTile: number | null = null;
 let cursor: number | null = null;
+/** The square the last typed letter went to, so Backspace can undo it after the highlight jumped to the next word. */
+let lastTyped: number | null = null;
 let toast = "";
 let trayKey = "";
 let boardSize = 0;
@@ -723,6 +725,7 @@ el.archiveUnplayed.addEventListener("click", () => {
 function tapCell(cell: number) {
   if (state.status !== "playing" || !isEditable(state, cell)) return;
   cursor = cell;
+  lastTyped = null;
   if (selectedTile !== null) {
     const tile = selectedTile;
     selectedTile = null;
@@ -792,6 +795,29 @@ function moveCursor(dr: number, dc: number) {
   }
 }
 
+/** The squares of a word that can still be filled, in reading direction (down for left and right). */
+function wordCells(line: LineName): number[] {
+  return boardLayout(state).lines[line].filter((cell) => isEditable(state, cell));
+}
+
+/**
+ * Where typing continues after a letter in `at`: the next empty square along the same word,
+ * then the first empty square of the next words (top, left, right, bottom).
+ */
+function nextTypingCell(at: number): number | null {
+  const order: LineName[] = ["top", "left", "right", "bottom"];
+  const own = lineOfCell(at);
+  const start = own ? order.indexOf(own) : 0;
+  for (let i = 0; i < order.length; i++) {
+    const cells = wordCells(order[(start + i) % order.length]);
+    const from = i === 0 ? cells.indexOf(at) + 1 : 0;
+    const ordered = i === 0 ? [...cells.slice(from), ...cells.slice(0, from)] : cells;
+    const next = ordered.find((cell) => state.cells[cell] === null);
+    if (next !== undefined) return next;
+  }
+  return null;
+}
+
 function typeLetter(letter: string) {
   if (cursor === null || !isEditable(state, cursor)) cursor = firstEmptyCell();
   if (cursor === null) return;
@@ -802,17 +828,22 @@ function typeLetter(letter: string) {
   }
   const at = cursor;
   setState(moveTile(state, tile, at));
-  cursor = firstEmptyCell(at) ?? at;
+  cursor = nextTypingCell(at) ?? at;
+  lastTyped = at;
   render();
 }
 
 function backspace() {
   if (cursor === null) return;
+  // On an empty square, step back along the word first.
   if (state.cells[cursor] === null || !isEditable(state, cursor)) {
-    const editable = boardLayout(state).editable.filter((c) => isEditable(state, c));
-    const before = editable.filter((c) => c < cursor!);
-    cursor = before.length ? before[before.length - 1] : cursor;
+    const line = lineOfCell(cursor);
+    const cells = line ? boardLayout(state).lines[line] : [];
+    const before = cells.slice(0, cells.indexOf(cursor)).filter((c) => isEditable(state, c));
+    const typed = lastTyped !== null && state.cells[lastTyped] !== null && isEditable(state, lastTyped) ? lastTyped : null;
+    cursor = before.at(-1) ?? typed ?? cursor;
   }
+  lastTyped = null;
   const tile = state.cells[cursor];
   if (tile !== null && isEditable(state, cursor)) setState(moveTile(state, tile, null));
   render();

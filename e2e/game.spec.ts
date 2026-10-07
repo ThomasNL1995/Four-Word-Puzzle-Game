@@ -101,6 +101,24 @@ test("a hint on the highlighted square moves the highlight on", async ({ page })
   await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "1");
 });
 
+test("typing follows the direction of the word", async ({ page }) => {
+  await openGame(page);
+  const { solution } = await currentPuzzle(page);
+  // Left word, top to bottom: cells 4 and 6. Then on to the right word (cell 5).
+  await cell(page, 4).click();
+  await page.keyboard.press(solution[4]);
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "6");
+  await page.keyboard.press(solution[6]);
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "5");
+
+  // Backspace undoes the last letter, then steps back up the word.
+  await page.keyboard.press("Backspace");
+  await expect(cell(page, 6)).toHaveText("");
+  await page.keyboard.press("Backspace");
+  await expect(cell(page, 4)).toHaveText("");
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "4");
+});
+
 for (const size of [5, 6]) {
   test(`play the ${size}-letter daily`, async ({ page }) => {
     await openGame(page);
