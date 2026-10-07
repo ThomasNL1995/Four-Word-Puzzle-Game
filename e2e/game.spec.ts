@@ -212,10 +212,10 @@ test("archive: switching word length stays on the same past day", async ({ page 
   await openGame(page, { date: new Date(2026, 9, 8, 12) });
   await page.locator("#mode-archive").click();
   await page.locator('.archive-day[data-day="1"]').click();
-  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await expect(page.locator("#puzzle-label")).toHaveText("#1 · Oct 6");
   await page.locator('[data-size-choice="5"]').click();
   await expect(page.locator(".cell")).toHaveCount(16);
-  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await expect(page.locator("#puzzle-label")).toHaveText("#1 · Oct 6");
   await expect(page.locator("#mode-archive")).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -285,6 +285,21 @@ test("a challenge link opens the friend's puzzle", async ({ page }) => {
   await expect(page.locator(".cell")).toHaveCount(16);
   await expect(page.locator("#puzzle-label")).toContainText("#1");
   await expect(page.locator("#mode-archive")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("switching word length only resizes the playing field", async ({ page }) => {
+  await openGame(page);
+  const sizes = async () =>
+    page.evaluate(() => ({
+      root: getComputedStyle(document.documentElement).fontSize,
+      title: document.querySelector(".title")!.getBoundingClientRect().height,
+    }));
+  const four = await sizes();
+  for (const size of [5, 6]) {
+    await page.locator(`[data-size-choice="${size}"]`).click();
+    await expect(page.locator(".cell")).toHaveCount(4 * size - 4);
+    expect(await sizes()).toEqual(four);
+  }
 });
 
 for (const size of [4, 5, 6]) {
