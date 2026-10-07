@@ -49,15 +49,18 @@
 }
 
 /* Sizing: everything is in rem, so the root font size scales the whole game.
-   --w0/--h0 are the game's natural size in px at a 16px root, per word length (measured; update them
-   if the layout changes). The root size is the largest that fits the screen:
+   --w0/--h0 are the game's natural size in px at a 16px root: the largest of the three word
+   lengths (measured; update them if the layout changes). They are the same for every length,
+   so switching length never rescales the header and buttons; instead each length sizes its
+   own board and tiles to fill that same space (see html[data-size] below).
+   The root size is the largest that fits the screen:
      - at most --fit-w of the width and --fit-h of the height (always fits, no scroll)
      - on landscape screens also at most --comfort of the height, so a big monitor
        doesn't get a giant board
      - never below 16px unless the screen is too small to fit the game at 16px. */
 :root {
-  --w0: 379;
-  --h0: 751;
+  --w0: 402;
+  --h0: 750;
   --fit-w: 0.96;
   --fit-h: 0.98;
   --comfort: 1;
@@ -66,7 +69,7 @@
 @media (orientation: landscape) {
   :root {
     --w0: 536;
-    --h0: 671;
+    --h0: 743;
     --comfort: 0.72;
   }
 }
@@ -219,8 +222,6 @@ a {
 
 /* Natural size of the 5 and 6 letter layouts (the same in both orientations). */
 html[data-size="5"] {
-  --w0: 379;
-  --h0: 744;
   --n: 5;
   --board: 20.5rem;
   --tile: 3.1rem;
@@ -228,8 +229,6 @@ html[data-size="5"] {
 }
 
 html[data-size="6"] {
-  --w0: 403;
-  --h0: 740;
   --n: 6;
   --board: 21.5rem;
   --tile: 2.5rem;
@@ -539,6 +538,13 @@ html[data-size="6"] {
   html:not([data-size="5"]):not([data-size="6"]) {
     --tile: 4rem;
     --tray-cols: 4;
+  }
+}
+
+/* 4 letters on a wide screen: the tray is one row, so the board gets the height that saves */
+@media (orientation: landscape) {
+  html:not([data-size="5"]):not([data-size="6"]) {
+    --board: 23.5rem;
   }
 }
 

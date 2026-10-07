@@ -444,8 +444,9 @@ function render() {
   el.pauseButton.textContent = state.status === "paused" ? "Resume" : "Pause";
   el.pauseOverlay.hidden = state.status !== "paused";
 
+  // The mode buttons say which kind; a past puzzle also shows its date.
   el.puzzleLabel.textContent =
-    `#${mode === "practice" ? gameId + 1 : gameId}`; // the mode buttons say which kind
+    mode === "practice" ? `#${gameId + 1}` : mode === "archive" ? `#${gameId} · ${shortDate(gameId)}` : `#${gameId}`;
   el.puzzleLabel.title = mode === "practice" ? "" : shortDate(gameId);
   el.modeDaily.setAttribute("aria-pressed", String(mode === "daily"));
   el.modeArchive.setAttribute("aria-pressed", String(mode === "archive"));
