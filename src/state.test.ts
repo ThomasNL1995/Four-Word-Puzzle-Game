@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { layout, type Puzzle } from "./puzzle.ts";
 import {
-  autoSubmit,
   boardLetters,
   cellOfTile,
   clearBoard,
@@ -13,12 +12,12 @@ import {
   pause,
   resume,
   solution,
-  lineCandidates,
+  CLUE_HINTS,
+  LETTER_HINTS,
+  lettersLeft,
   submit,
-  useCheck,
   useClue,
-  useHint,
-  useUsefulHint,
+  useLetterHint,
   type GameState,
 } from "./state.ts";
 
@@ -112,80 +111,63 @@ describe("submit", () => {
   });
 });
 
-describe("useHint", () => {
-  it("fills a wrong cell with the right letter and locks it", () => {
+describe("letter hints", () => {
+  // Board cells: top 0-3, left 0,4,6,8, right 3,5,7,11, bottom 8-11.
+  it("reveal the 3rd letter of the chosen word and lock it", () => {
     let s = newGame(PUZZLE, 0);
-    s = useHint(s, 0, () => 0);
+    s = useLetterHint(s, "left", 0);
+    expect(s.hinted).toEqual([6]); // PAID: I
+    expect(boardLetters(s)[6]).toBe("I");
     expect(s.hintsUsed).toBe(1);
-    const cell = s.hinted[0];
-    expect(boardLetters(s)[cell]).toBe(solution(s)[cell]);
     // Locked: can't move it or clear it.
-    const tile = s.cells[cell]!;
+    const tile = s.cells[6]!;
     expect(moveTile(s, tile, null)).toBe(s);
-    expect(clearBoard(s).cells[cell]).toBe(tile);
+    expect(clearBoard(s).cells[6]).toBe(tile);
+    expect(lettersLeft(s)).toEqual(["top", "bottom", "right"]);
   });
 
-  it("never spends a hint on a cell that is already right", () => {
-    let s = solve(newGame(PUZZLE, 0));
-    s = moveTile(s, s.cells[1]!, null); // only cell 1 is wrong now
-    s = useHint(s, 0, () => 0);
-    expect(s.hinted).toEqual([1]);
-  });
-
-  it("takes the tile from a wrong spot when the tray has none", () => {
+  it("go to the next word in board order when the chosen one is used", () => {
     let s = newGame(PUZZLE, 0);
-    const u = tileFor(s, "U");
-    s = moveTile(s, u, 9); // U in a wrong cell
-    s = useHint(s, 0, () => 0); // first target is cell 1, which needs U
-    expect(s.hinted).toEqual([1]);
-    expect(boardLetters(s)[1]).toBe("U");
-    expect(boardLetters(s)[9]).toBe("");
+    s = useLetterHint(s, "left", 0);
+    s = useLetterHint(s, "left", 0);
+    expect(s.hinted).toEqual([6, 2]); // then top: PURE, R
   });
 
-  it("allows at most maxHints", () => {
+  it("lock a letter the player already has right", () => {
     let s = newGame(PUZZLE, 0);
-    for (let i = 0; i < 10; i++) s = useHint(s, 0);
-    expect(s.hintsUsed).toBe(maxHints(4));
+    s = moveTile(s, tileFor(s, "R"), 2);
+    const before = s.cells[2];
+    s = useLetterHint(s, "top", 0);
+    expect(s.hinted).toEqual([2]);
+    expect(s.cells[2]).toBe(before);
   });
 
-  it("wins when the hint completes the board", () => {
+  it("take the tile from a wrong spot when the tray has none", () => {
+    let s = newGame(PUZZLE, 0);
+    const w = tileFor(s, "W");
+    s = moveTile(s, w, 1); // W in a wrong cell
+    s = useLetterHint(s, "bottom", 0); // DAWN: W goes to cell 10
+    expect(boardLetters(s)[10]).toBe("W");
+    expect(boardLetters(s)[1]).toBe("");
+  });
+
+  it("allow four, then stop", () => {
+    let s = newGame(PUZZLE, 0);
+    for (let i = 0; i < 6; i++) s = useLetterHint(s, null, 0);
+    expect(s.hinted).toHaveLength(LETTER_HINTS);
+    expect(s.hintsUsed).toBe(4);
+  });
+
+  it("win when the hint completes the board", () => {
     let s = solve(newGame(PUZZLE, 0));
     s = moveTile(s, s.cells[10]!, null);
-    s = useHint(s, 5000);
+    s = useLetterHint(s, "bottom", 5000);
     expect(s.status).toBe("won");
   });
 });
 
-describe("most useful letter", () => {
-  // Words that fit PAID's corners and the tray letters: PAID and PRID (a made-up extra).
-  const WORDS = [...VALID, "PRID", "PUID"];
-
-  it("counts possible answers from the corners, hints and free letters", () => {
-    const s = newGame(PUZZLE, 0);
-    expect(lineCandidates(s, "left", WORDS).sort()).toEqual(["PAID", "PRID", "PUID"]);
-    expect(lineCandidates(s, "top", WORDS)).toEqual(["PURE", "PARE"]);
-  });
-
-  it("reveals the next letter of the word with the most possible answers", () => {
-    let s = newGame(PUZZLE, 0);
-    s = useUsefulHint(s, WORDS, 0);
-    expect(s.hinted).toEqual([4]); // left word, 2nd letter
-    expect(boardLetters(s)[4]).toBe("A");
-    // The left word is now down to PAID; top (PURE/PARE) is next.
-    s = useUsefulHint(s, WORDS, 0);
-    expect(s.hinted).toEqual([4, 1]);
-  });
-
-  it("skips letters the player already has right", () => {
-    let s = newGame(PUZZLE, 0);
-    s = moveTile(s, tileFor(s, "A"), 4);
-    s = useUsefulHint(s, WORDS, 0);
-    expect(s.hinted).toEqual([6]); // left word, 3rd letter
-  });
-});
-
 describe("clues", () => {
-  it("reveals the clue of the chosen word, or the next one without a clue", () => {
+  it("reveal the clue of the chosen word, or the next one without a clue", () => {
     let s = newGame(PUZZLE, 0);
     s = useClue(s, "left");
     s = useClue(s, "left");
@@ -193,42 +175,13 @@ describe("clues", () => {
     expect(s.hintsUsed).toBe(2);
   });
 
-  it("stops after every word has a clue", () => {
+  it("stop after every word has a clue, and count with letter hints", () => {
     let s = newGame(PUZZLE, 0);
     for (let i = 0; i < 6; i++) s = useClue(s, null);
-    expect(s.clues).toHaveLength(4);
-    expect(s.hintsUsed).toBe(4);
-  });
-});
-
-describe("check words", () => {
-  it("marks the complete words that are right, until they change", () => {
-    let s = solve(newGame(PUZZLE, 0));
-    s = moveTile(s, s.cells[1]!, 4); // top PARE and left PUID are wrong now
-    s = useCheck(s);
-    expect(s.checked).toEqual(["bottom", "right"]);
-    expect(s.feedback).toEqual({ kind: "checked", right: 2, complete: 4 });
-    expect(s.hintsUsed).toBe(1);
-
-    // Taking a letter out of DAWN removes its mark.
-    s = moveTile(s, s.cells[9]!, null);
-    expect(s.checked).toEqual(["right"]);
-  });
-
-  it("doesn't spend a hint when there is nothing new to check", () => {
-    let s = useCheck(newGame(PUZZLE, 0));
-    expect(s.feedback).toEqual({ kind: "nothing-to-check" });
-    expect(s.hintsUsed).toBe(0);
-  });
-
-  it("judges a full board without a submit", () => {
-    let s = solve(newGame(PUZZLE, 0));
-    expect(autoSubmit(s, 0).status).toBe("won");
-    s = moveTile(s, s.cells[1]!, 4);
-    s = autoSubmit(s, 0);
-    expect(s.status).toBe("playing");
-    expect(s.feedback).toEqual({ kind: "full" });
-    expect(s.wrongSubmits).toBe(0);
+    s = useLetterHint(s, null, 0);
+    expect(s.clues).toHaveLength(CLUE_HINTS);
+    expect(s.hintsUsed).toBe(5);
+    expect(maxHints()).toBe(8);
   });
 });
 
@@ -237,7 +190,6 @@ describe("bigger boards", () => {
     const p: Puzzle = ["STATUE", "STRICT", "STRESS", "EFFORT"];
     let s = newGame(p, 0);
     expect(s.tiles).toHaveLength(16);
-    expect(maxHints(6)).toBe(12);
     s = solve(s);
     s = submit(s, new Set(p), 1000);
     expect(s.status).toBe("won");

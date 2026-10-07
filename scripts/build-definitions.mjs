@@ -9,7 +9,11 @@
 // Words WordNet only knows in their base form (asked, making, older) are looked up via
 // WordNet's own exception lists and suffix rules, and shown as "past tense of ask: ...".
 // scripts/words/definition-overrides.json wins over everything: it covers words WordNet
-// doesn't have (that, with, from, ...) and fixes glosses that read badly.
+// doesn't have (that, with, from, ...) and replaces glosses that are no good as a clue: a
+// rare sense (COVERT "a flock of coots"), jargon, or text that gives the word away. Every
+// puzzle word was reviewed this way (with an LLM), so most of them have an override.
+// The definitions double as clues in the game, so a puzzle word's definition may not
+// contain the word itself or name its base form ("past tense of ask").
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -137,6 +141,9 @@ function define(word) {
 
 // 3. Write one file per size. Every word that appears in a puzzle must have a definition.
 const allMissing = [];
+const allLeaks = [];
+const givesAway = (word, text) =>
+  text.toLowerCase().includes(word.toLowerCase()) || /\b(tense|participle|form|comparative|superlative|plural) of\b/.test(text);
 for (const n of SIZES) {
   const puzzles = readJson(`src/data/${n}/puzzles.json`);
   const used = new Set([...puzzles.daily, ...puzzles.practice].flat());
@@ -146,11 +153,15 @@ for (const n of SIZES) {
     const def = define(word);
     if (def) definitions[word] = def;
     else if (used.has(word)) missing.push(word);
+    if (def && used.has(word) && givesAway(word, def.text)) allLeaks.push(`${word}: ${def.text}`);
   }
   allMissing.push(...missing);
   const sorted = Object.fromEntries(Object.entries(definitions).sort(([a], [b]) => a.localeCompare(b)));
   writeFileSync(new URL(`src/data/${n}/definitions.json`, root), JSON.stringify(sorted));
   console.log(`${n} letters: ${Object.keys(definitions).length} definitions, ${missing.length} puzzle words missing`);
+}
+if (allLeaks.length) {
+  throw new Error(`${allLeaks.length} clues give the word away, fix them in definition-overrides.json:\n${allLeaks.join("\n")}`);
 }
 if (allMissing.length) {
   throw new Error(`No definition for ${allMissing.length} puzzle words, add them to definition-overrides.json:\n${allMissing.join(" ")}`);

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { encodeChallenge } from "../src/share.ts";
 import {
   cell,
@@ -71,8 +71,8 @@ test("solve the daily with a wrong guess and a hint", async ({ page }) => {
     await page.locator("#clear-button").click();
   }
 
-  await page.locator("#hint-button").click();
-  await expect(page.locator("#hint-button")).toHaveText("Hint (5)");
+  await page.locator("#letter-button").click();
+  await expect(page.locator("#letter-button")).toHaveText("Letter (3)");
   await solveByTyping(page, solution, layout.editable);
   await page.keyboard.press("Enter");
 
@@ -92,13 +92,31 @@ test("solve the daily with a wrong guess and a hint", async ({ page }) => {
 test("a hint on the highlighted square moves the highlight on", async ({ page }) => {
   await openGame(page);
   const { solution, layout } = await currentPuzzle(page);
-  const [first, second, ...rest] = layout.editable;
-  await solveByTyping(page, solution, rest);
-  await cell(page, first).click();
-  await page.locator("#hint-button").click();
-  const { state } = await currentPuzzle(page);
-  const cursor = page.locator(".cell.cursor");
-  await expect(cursor).toHaveAttribute("data-cell", String(state.hinted[0] === first ? second : first));
+  // Fill everything but the top word's middle (cells 1 and 2), then highlight cell 2:
+  // the letter hint for the top word fills exactly that square.
+  await solveByTyping(page, solution, layout.editable.filter((c) => c !== 1 && c !== 2));
+  await cell(page, 2).click();
+  await page.locator("#letter-button").click();
+  await expect(cell(page, 2)).toHaveClass(/hinted/);
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "1");
+});
+
+test("typing follows the direction of the word", async ({ page }) => {
+  await openGame(page);
+  const { solution } = await currentPuzzle(page);
+  // Left word, top to bottom: cells 4 and 6. Then on to the right word (cell 5).
+  await cell(page, 4).click();
+  await page.keyboard.press(solution[4]);
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "6");
+  await page.keyboard.press(solution[6]);
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "5");
+
+  // Backspace undoes the last letter, then steps back up the word.
+  await page.keyboard.press("Backspace");
+  await expect(cell(page, 6)).toHaveText("");
+  await page.keyboard.press("Backspace");
+  await expect(cell(page, 4)).toHaveText("");
+  await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "4");
 });
 
 for (const size of [5, 6]) {
@@ -106,7 +124,7 @@ for (const size of [5, 6]) {
     await openGame(page);
     await page.locator(`[data-size-choice="${size}"]`).click();
     await expect(page.locator(".cell")).toHaveCount(4 * size - 4);
-    await expect(page.locator("#hint-button")).toHaveText(`Hint (${(size - 2) * 3})`);
+    await expect(page.locator("#letter-button")).toHaveText("Letter (4)");
     await expectNoScroll(page);
 
     const { solution, layout } = await currentPuzzle(page, "daily", size);
@@ -165,50 +183,32 @@ test("archive: months a year later", async ({ page }) => {
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
 });
 
-test.describe("hint types", () => {
-  async function chooseHintType(page: Page, type: string) {
-    await page.locator("#help-button").click();
-    await page.locator("#hint-type").selectOption(type);
-    await page.locator("#help-dialog [data-close]").click();
-  }
-
-  test("most useful letter fills a letter next to a corner or a hint", async ({ page }) => {
-    await openGame(page);
-    await chooseHintType(page, "useful");
-    await page.locator("#hint-button").click();
-    const { state, layout, solution } = await currentPuzzle(page);
-    const cell = state.hinted[0];
-    const line = Object.values(layout.lines).find((cells) => cells.includes(cell))!;
-    expect(line.indexOf(cell)).toBe(1); // the 2nd letter of its word
-    await expect(page.locator(`[data-cell="${cell}"]`)).toHaveText(solution[cell]);
+test.describe("hints", () => {
+  test("letter: the 3rd letter of the word with the highlighted square", async ({ page }) => {
+    await openGame(page, { size: 6 });
+    const { layout, solution } = await currentPuzzle(page, "daily", 6);
+    const right = layout.lines.right;
+    await cell(page, right[1]).click();
+    await page.locator("#letter-button").click();
+    await expect(cell(page, right[2])).toHaveText(solution[right[2]]);
+    await expect(cell(page, right[2])).toHaveClass(/hinted/);
+    await expect(page.locator("#letter-button")).toHaveText("Letter (3)");
   });
 
   test("clue for the word with the highlighted square", async ({ page }) => {
     await openGame(page);
-    await chooseHintType(page, "clue");
-    await expect(page.locator("#hint-button")).toHaveText("Clue (4)");
+    await expect(page.locator("#clue-button")).toHaveText("Clue (4)");
     await cell(page, 4).click(); // a square of the left word
-    await page.locator("#hint-button").click();
-    await expect(page.locator(".clue")).toHaveCount(1);
-    await expect(page.locator(".clue strong")).toHaveText("Left");
-    await expect(page.locator("#hint-button")).toHaveText("Clue (3)");
-  });
+    await page.locator("#clue-button").click();
+    await expect(page.locator(".clue.active strong")).toHaveText("Left");
+    await expect(page.locator("#clue-button")).toHaveText("Clue (3)");
 
-  test("check words: no submit button, a full right board wins by itself", async ({ page }) => {
-    await openGame(page);
-    await chooseHintType(page, "check");
-    await expect(page.locator("#submit-button")).toBeHidden();
-    const { solution, layout } = await currentPuzzle(page);
-
-    // Fill only the top word, check it.
-    const top = layout.lines.top.filter((c) => layout.editable.includes(c));
-    await solveByTyping(page, solution, top);
-    await page.locator("#hint-button").click();
-    await expect(page.locator("#message")).toHaveText("1 of 1 complete word is right.");
-    await expect(page.locator(".cell.correct")).toHaveCount(4);
-
-    await solveByTyping(page, solution, layout.editable.filter((c) => !top.includes(c)));
-    await expect(page.locator("#result-dialog")).toBeVisible();
+    // A second clue: the 4-letter board shows one at a time, the highlighted word's first.
+    await cell(page, 1).click(); // top word
+    await page.locator("#clue-button").click();
+    await expect(page.locator(".clue.active strong")).toHaveText("Top");
+    await page.locator(".clue-next").click();
+    await expect(page.locator(".clue.active strong")).toHaveText("Left");
   });
 });
 
