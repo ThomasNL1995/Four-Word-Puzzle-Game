@@ -18,6 +18,7 @@ import {
   boardLetters,
   cellOfTile,
   clearBoard,
+  clueLine,
   cluesLeft,
   elapsedMs,
   isEditable,
@@ -26,6 +27,7 @@ import {
   newGame,
   pause,
   resume,
+  letterHintLine,
   lettersLeft,
   submit,
   useClue,
@@ -114,6 +116,8 @@ let results: Results;
 let challenge: Challenge | null = null;
 let selectedTile: number | null = null;
 let cursor: number | null = null;
+/** The hint button under the mouse (or focused): its target is highlighted on the board. */
+let hintPreview: "clue" | "letter" | null = null;
 /** The square the last typed letter went to, so Backspace can undo it after the highlight jumped to the next word. */
 let lastTyped: number | null = null;
 let toast = "";
@@ -121,8 +125,12 @@ let trayKey = "";
 let boardSize = 0;
 let cellEls: HTMLElement[] = [];
 let cluesEl: HTMLElement | null = null;
+/** One outline around a whole word, shown while hovering the clue button. */
+let wordOutlineEl: HTMLElement | null = null;
 /** On the small 4-letter board one clue shows at a time: this one, unless the highlighted square's word has a clue. */
 let clueShown: LineName | null = null;
+/** What the clue panel shows now; it is only rebuilt when this changes (a rebuild mid-click loses the click). */
+let cluesKey = "";
 /** Definitions of the current word length, once loaded (for clue hints). */
 let definitions: { size: number; words: Record<string, Definition> } | null = null;
 /** The month the archive shows: [year, month (0-11)], kept while the page is open. */
@@ -180,11 +188,15 @@ function buildBoard() {
     return div;
   });
   // Clues (clue hints) are shown in the empty middle of the frame.
+  cluesKey = "";
   cluesEl = document.createElement("div");
   cluesEl.className = "clues";
   cluesEl.setAttribute("aria-live", "polite");
   cluesEl.style.gridArea = `2 / 2 / ${size} / ${size}`;
-  el.board.replaceChildren(...cellEls, cluesEl);
+  wordOutlineEl = document.createElement("div");
+  wordOutlineEl.className = "word-outline";
+  wordOutlineEl.hidden = true;
+  el.board.replaceChildren(...cellEls, cluesEl, wordOutlineEl);
   trayKey = "";
 }
 
@@ -338,6 +350,7 @@ function renderClues() {
       })
       .catch(() => {});
     cluesEl.textContent = "Loading clues…";
+    cluesKey = "";
     return;
   }
   const words = definitions.words;
@@ -346,6 +359,9 @@ function renderClues() {
   const [top, bottom, left, right] = state.puzzle;
   const answer: Record<LineName, string> = { top, bottom, left, right };
   const names: Record<LineName, string> = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
+  const key = [state.puzzle.join(), clues.join(), active].join("|");
+  if (key === cluesKey) return;
+  cluesKey = key;
   cluesEl.replaceChildren(
     ...clues.map((line) => {
       const p = document.createElement("p");
@@ -376,6 +392,23 @@ function render() {
   const { corners } = boardLayout(state);
   const playing = state.status === "playing";
 
+  // Hovering a hint button shows where it goes: the square a letter fills, or the word a clue explains.
+  const preferred = lineOfCell(cursor);
+  const letterLine = playing && hintPreview === "letter" ? letterHintLine(state, preferred) : null;
+  const previewCell = letterLine ? boardLayout(state).lines[letterLine][2] : null;
+  const outlineLine = playing && hintPreview === "clue" ? clueLine(state, preferred) : null;
+  if (wordOutlineEl) {
+    wordOutlineEl.hidden = !outlineLine;
+    const n = size;
+    const areas: Record<LineName, string> = {
+      top: `1 / 1 / 2 / ${n + 1}`,
+      bottom: `${n} / 1 / ${n + 1} / ${n + 1}`,
+      left: `1 / 1 / ${n + 1} / 2`,
+      right: `1 / ${n} / ${n + 1} / ${n + 1}`,
+    };
+    if (outlineLine) wordOutlineEl.style.gridArea = areas[outlineLine];
+  }
+
   cellEls.forEach((div, cell) => {
     const tile = state.cells[cell];
     const corner = corners.includes(cell);
@@ -386,6 +419,7 @@ function render() {
     div.classList.toggle("filled", tile !== null);
     div.classList.toggle("editable", isEditable(state, cell));
     div.classList.toggle("cursor", playing && cell === cursor);
+    div.classList.toggle("preview", cell === previewCell);
     if (tile !== null && !hinted && playing) div.dataset.tile = String(tile);
     else delete div.dataset.tile;
     div.setAttribute("aria-label", `${letters[cell] || "empty"}${corner ? ", given" : hinted ? ", hint" : ""}`);
@@ -776,23 +810,28 @@ enablePointerInput({
 
 // ---------- Input: keyboard ----------
 
+/**
+ * Arrow keys: the next square straight in that direction. When there is none (the way to a
+ * crossing word is blocked by a corner), the nearest square in that direction, so the
+ * cursor can go all around the frame.
+ */
 function moveCursor(dr: number, dc: number) {
   const { editable, positions } = boardLayout(state);
   if (cursor === null) {
     cursor = firstEmptyCell() ?? editable.find((c) => isEditable(state, c)) ?? null;
     return;
   }
-  let [r, c] = positions[cursor];
-  for (;;) {
-    r += dr;
-    c += dc;
-    if (r < 0 || r >= size || c < 0 || c >= size) return;
-    const cell = positions.findIndex(([pr, pc]) => pr === r && pc === c);
-    if (cell !== -1 && isEditable(state, cell)) {
-      cursor = cell;
-      return;
-    }
+  const [r, c] = positions[cursor];
+  let best: { cell: number; side: number; ahead: number } | null = null;
+  for (const cell of editable) {
+    if (!isEditable(state, cell)) continue;
+    const [pr, pc] = positions[cell];
+    const ahead = (pr - r) * dr + (pc - c) * dc; // distance in the arrow's direction
+    const side = Math.abs((pr - r) * dc) + Math.abs((pc - c) * dr); // distance sideways
+    if (ahead <= 0) continue;
+    if (!best || side < best.side || (side === best.side && ahead < best.ahead)) best = { cell, side, ahead };
   }
+  if (best) cursor = best.cell;
 }
 
 /** The squares of a word that can still be filled, in reading direction (down for left and right). */
@@ -874,6 +913,20 @@ el.clueButton.addEventListener("click", () => {
   clueShown = state.clues?.at(-1) ?? null;
   render();
 });
+for (const [button, kind] of [
+  [el.clueButton, "clue"],
+  [el.letterButton, "letter"],
+] as const) {
+  const show = (on: boolean) => {
+    hintPreview = on ? kind : null;
+    render();
+  };
+  // Mouse only: on touch screens a tap would leave the highlight stuck.
+  button.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && show(true));
+  button.addEventListener("pointerleave", (e) => e.pointerType === "mouse" && show(false));
+  button.addEventListener("focus", () => button.matches(":focus-visible") && show(true));
+  button.addEventListener("blur", () => show(false));
+}
 el.letterButton.addEventListener("click", () => {
   setState(useLetterHint(state, lineOfCell(cursor), Date.now()));
   // The hint may have landed on the highlighted square: move on to the next free one.

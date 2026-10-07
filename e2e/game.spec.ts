@@ -89,6 +89,26 @@ test("solve the daily with a wrong guess and a hint", async ({ page }) => {
   await expect(page.locator("#stat-streak")).toHaveText("1");
 });
 
+test("hovering a hint button shows where it goes", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "mouse only");
+  await openGame(page);
+  await cell(page, 4).click(); // the left word: cells 0, 4, 6, 8
+  await page.locator("#letter-button").hover();
+  await expect(page.locator(".cell.preview")).toHaveCount(1);
+  await expect(cell(page, 6)).toHaveClass(/preview/); // its 3rd letter
+  await page.locator("#clue-button").hover();
+  await expect(page.locator(".cell.preview")).toHaveCount(0);
+  // One outline around the whole left word: from the top-left corner down to the bottom-left one.
+  const outline = (await page.locator(".word-outline").boundingBox())!;
+  const top = (await cell(page, 0).boundingBox())!;
+  const bottom = (await cell(page, 8).boundingBox())!;
+  expect(outline.y).toBeLessThan(top.y);
+  expect(outline.y + outline.height).toBeGreaterThan(bottom.y + bottom.height);
+  expect(outline.width).toBeLessThan(top.width * 1.5);
+  await page.mouse.move(0, 0);
+  await expect(page.locator(".word-outline")).toBeHidden();
+});
+
 test("a hint on the highlighted square moves the highlight on", async ({ page }) => {
   await openGame(page);
   const { solution, layout } = await currentPuzzle(page);
@@ -117,6 +137,25 @@ test("typing follows the direction of the word", async ({ page }) => {
   await page.keyboard.press("Backspace");
   await expect(cell(page, 4)).toHaveText("");
   await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "4");
+});
+
+test("arrow keys go all around the frame", async ({ page }) => {
+  await openGame(page);
+  const cursor = page.locator(".cell.cursor");
+  // 4 letters: top 1 2, left 4 6, right 5 7, bottom 9 10.
+  await cell(page, 1).click();
+  for (const [key, expected] of [
+    ["ArrowLeft", 4], // around the top-left corner, onto the left word
+    ["ArrowUp", 1], // and back
+    ["ArrowRight", 2],
+    ["ArrowRight", 5], // around the top-right corner
+    ["ArrowDown", 7],
+    ["ArrowLeft", 6], // straight across the middle
+    ["ArrowDown", 9], // around the bottom-left corner
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(cursor).toHaveAttribute("data-cell", String(expected));
+  }
 });
 
 for (const size of [5, 6]) {

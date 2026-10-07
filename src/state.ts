@@ -164,6 +164,16 @@ function pick(available: LineName[], preferred: LineName | null): LineName | und
   return preferred && available.includes(preferred) ? preferred : available[0];
 }
 
+/** The word the next letter hint goes to, or null when they are used up. */
+export function letterHintLine(state: GameState, preferred: LineName | null): LineName | null {
+  return pick(lettersLeft(state), preferred) ?? null;
+}
+
+/** The word the next clue goes to, or null when they are used up. */
+export function clueLine(state: GameState, preferred: LineName | null): LineName | null {
+  return pick(cluesLeft(state), preferred) ?? null;
+}
+
 /**
  * Reveals the 3rd letter of a word (the preferred one if it can, otherwise the next in board
  * order): the right tile goes there and is locked. If the player already had it right, it is
@@ -171,7 +181,7 @@ function pick(available: LineName[], preferred: LineName | null): LineName | und
  */
 export function useLetterHint(state: GameState, preferred: LineName | null, now: number): GameState {
   if (state.status !== "playing") return state;
-  const line = pick(lettersLeft(state), preferred);
+  const line = letterHintLine(state, preferred);
   if (!line) return state;
   const cell = boardLayout(state).lines[line][2];
 
@@ -206,7 +216,7 @@ export function useLetterHint(state: GameState, preferred: LineName | null, now:
 /** Reveals the clue of a word: the preferred one if it has none yet, otherwise the next without. */
 export function useClue(state: GameState, preferred: LineName | null): GameState {
   if (state.status !== "playing") return state;
-  const line = pick(cluesLeft(state), preferred);
+  const line = clueLine(state, preferred);
   if (!line) return state;
   return { ...state, clues: [...(state.clues ?? []), line], hintsUsed: state.hintsUsed + 1, feedback: null };
 }
