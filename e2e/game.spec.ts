@@ -208,6 +208,17 @@ test("archive: play a past puzzle without touching the streak", async ({ page })
   await expect(page.locator("#stat-extra")).toContainText("Past puzzles solved: 1");
 });
 
+test("archive: switching word length stays on the same past day", async ({ page }) => {
+  await openGame(page, { date: new Date(2026, 9, 8, 12) });
+  await page.locator("#mode-archive").click();
+  await page.locator('.archive-day[data-day="1"]').click();
+  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await page.locator('[data-size-choice="5"]').click();
+  await expect(page.locator(".cell")).toHaveCount(16);
+  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await expect(page.locator("#mode-archive")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("archive: months a year later", async ({ page }) => {
   await openGame(page, { date: new Date(2027, 9, 7, 12) });
   await page.locator("#mode-archive").click();
@@ -249,6 +260,20 @@ test.describe("hints", () => {
     await page.locator(".clue-next").click();
     await expect(page.locator(".clue.active strong")).toHaveText("Left");
   });
+});
+
+test("coming back continues in practice mode", async ({ page }) => {
+  await openGame(page);
+  await page.locator("#mode-practice").click();
+  await expect(page.locator("#mode-practice")).toHaveAttribute("aria-pressed", "true");
+  const before = await currentPuzzle(page, "practice");
+  await page.reload();
+  await expect(page.locator("#mode-practice")).toHaveAttribute("aria-pressed", "true");
+  expect((await currentPuzzle(page, "practice")).puzzle).toEqual(before.puzzle);
+
+  await page.locator("#mode-daily").click();
+  await page.reload();
+  await expect(page.locator("#mode-daily")).toHaveAttribute("aria-pressed", "true");
 });
 
 test("a challenge link opens the friend's puzzle", async ({ page }) => {

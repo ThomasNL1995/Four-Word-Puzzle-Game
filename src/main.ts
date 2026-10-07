@@ -217,6 +217,7 @@ async function useSize(n: number): Promise<boolean> {
 
 function startGame(nextMode: Mode, id: number, nextState: GameState) {
   mode = nextMode;
+  saveSetting("mode", mode); // coming back later continues in the same mode
   gameId = id;
   state = nextState;
   selectedTile = null;
@@ -966,7 +967,9 @@ el.sizeButtons.forEach((button) =>
     const n = Number(button.dataset.sizeChoice);
     if (n === size) return;
     leaveChallenge();
+    // Stay in the same mode: practice, the same past day in the archive, or the daily.
     if (mode === "practice") startPractice(n);
+    else if (mode === "archive") startArchive(gameId, n);
     else startDaily(n);
   })
 );
@@ -1018,6 +1021,11 @@ async function boot() {
     }
   }
   if (code) leaveChallenge();
+  // Continue where the player was: practice, an unfinished archive puzzle, or else today's daily.
+  const lastMode = loadSetting("mode");
+  if (lastMode === "practice") return startPractice();
+  const archived = lastMode === "archive" ? loadGame("archive", size) : null;
+  if (archived && archived.state.status !== "won" && archived.id < today()) return startArchive(archived.id);
   return startDaily();
 }
 
