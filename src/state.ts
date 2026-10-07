@@ -10,10 +10,23 @@ export function maxHints(size: number): number {
 
 export type Status = "playing" | "paused" | "won";
 
+/**
+ * Hint types (temporary, to try out which one feels best):
+ * - letter: reveal a random letter
+ * - useful: reveal the next letter of the word with the most possible answers
+ * - clue: show the definition of one word
+ * - check: mark which complete words are right (there is no submit: a full, right board wins)
+ */
+export type HintType = "letter" | "useful" | "clue" | "check";
+export const HINT_TYPES: HintType[] = ["letter", "useful", "clue", "check"];
+
 export type Feedback =
   | { kind: "incomplete" }
-  | { kind: "wrong"; correctLines: LineName[] }
-  | { kind: "real-words"; correctLines: LineName[] }
+  | { kind: "wrong" }
+  | { kind: "real-words" }
+  | { kind: "full" }
+  | { kind: "checked"; right: number; complete: number }
+  | { kind: "nothing-to-check" }
   | { kind: "won" };
 
 export interface GameState {
@@ -24,6 +37,10 @@ export interface GameState {
   cells: (number | null)[];
   /** Cells filled by a hint. Their tiles are locked. */
   hinted: number[];
+  /** Words whose clue was revealed (clue hints). Optional: older saves don't have it. */
+  clues?: LineName[];
+  /** Words a check marked as right; a word loses its mark when it changes. */
+  checked?: LineName[];
   hintsUsed: number;
   wrongSubmits: number;
   /** Time played before the current run. */
@@ -53,6 +70,8 @@ export function newGame(puzzle: Puzzle, now: number, random: () => number = Math
     ),
     cells: new Array(layout(puzzle[0].length).cellCount).fill(null),
     hinted: [],
+    clues: [],
+    checked: [],
     hintsUsed: 0,
     wrongSubmits: 0,
     elapsedMs: 0,
@@ -110,6 +129,22 @@ export function hintsLeft(state: GameState): number {
   return maxHints(size(state)) - state.hintsUsed;
 }
 
+function isLineRight(state: GameState, line: LineName): boolean {
+  const sol = solution(state);
+  const letters = boardLetters(state);
+  return boardLayout(state).lines[line].every((cell) => letters[cell] === sol[cell]);
+}
+
+function isFull(state: GameState): boolean {
+  return boardLetters(state).every((letter) => letter !== "");
+}
+
+/** After the board changed: words marked right by a check keep their mark only while they stay right. */
+function withCells(state: GameState, cells: (number | null)[]): GameState {
+  const next = { ...state, cells, feedback: null };
+  return { ...next, checked: (state.checked ?? []).filter((line) => isLineRight(next, line)) };
+}
+
 // ---------- Actions ----------
 
 /**
@@ -132,13 +167,20 @@ export function moveTile(state: GameState, tile: number, toCell: number | null):
     cells[toCell] = tile;
     if (from !== -1) cells[from] = occupant;
   }
-  return { ...state, cells, feedback: null };
+  return withCells(state, cells);
 }
 
 export function clearBoard(state: GameState): GameState {
   if (state.status !== "playing") return state;
   const cells = state.cells.map((tile, cell) => (state.hinted.includes(cell) ? tile : null));
-  return { ...state, cells, feedback: null };
+  return withCells(state, cells);
+}
+
+/** Cells a letter hint may reveal: not hinted yet and not already right. */
+function hintTargets(state: GameState): number[] {
+  const sol = solution(state);
+  const letters = boardLetters(state);
+  return boardLayout(state).editable.filter((cell) => !state.hinted.includes(cell) && letters[cell] !== sol[cell]);
 }
 
 /**
@@ -147,13 +189,59 @@ export function clearBoard(state: GameState): GameState {
  */
 export function useHint(state: GameState, now: number, random: () => number = Math.random): GameState {
   if (state.status !== "playing" || hintsLeft(state) <= 0) return state;
+  const targets = hintTargets(state);
+  if (targets.length === 0) return state;
+  return revealCell(state, targets[Math.floor(random() * targets.length)], now);
+}
 
+/**
+ * Possible answers for a line, from what the player knows for sure: the corners, the hinted
+ * letters and the letters that are not locked yet.
+ */
+export function lineCandidates(state: GameState, line: LineName, words: Iterable<string>): string[] {
+  const sol = solution(state);
+  const cells = boardLayout(state).lines[line];
+  const known = cells.map((cell) => (boardLayout(state).corners.includes(cell) || state.hinted.includes(cell) ? sol[cell] : null));
+  const free = new Map<string, number>();
+  state.tiles.forEach((letter, tile) => {
+    if (!isTileLocked(state, tile)) free.set(letter, (free.get(letter) ?? 0) + 1);
+  });
+  const result: string[] = [];
+  for (const word of words) {
+    if (word.length !== cells.length) continue;
+    const left = new Map(free);
+    const fits = [...word].every((letter, i) => {
+      if (known[i] !== null) return known[i] === letter;
+      const n = left.get(letter) ?? 0;
+      left.set(letter, n - 1);
+      return n > 0;
+    });
+    if (fits) result.push(word);
+  }
+  return result;
+}
+
+/**
+ * The most useful letter: in the word that still has the most possible answers, the first
+ * letter from the start (2nd, then 3rd, ...) that isn't known or right yet.
+ */
+export function useUsefulHint(state: GameState, words: Iterable<string>, now: number): GameState {
+  if (state.status !== "playing" || hintsLeft(state) <= 0) return state;
+  const targets = new Set(hintTargets(state));
+  const list = [...words];
+  let best: { cell: number; count: number } | null = null;
+  for (const line of LINE_NAMES) {
+    const cell = boardLayout(state).lines[line].find((c) => targets.has(c));
+    if (cell === undefined) continue;
+    const count = lineCandidates(state, line, list).length;
+    if (!best || count > best.count) best = { cell, count };
+  }
+  return best ? revealCell(state, best.cell, now) : state;
+}
+
+function revealCell(state: GameState, cell: number, now: number): GameState {
   const sol = solution(state);
   const letters = boardLetters(state);
-  const targets = boardLayout(state).editable.filter((cell) => !state.hinted.includes(cell) && letters[cell] !== sol[cell]);
-  if (targets.length === 0) return state;
-
-  const cell = targets[Math.floor(random() * targets.length)];
   const wanted = sol[cell];
   const candidates = state.tiles.map((letter, tile) => ({ letter, tile })).filter((t) => t.letter === wanted);
   // Prefer a tile from the tray, then one that sits in a wrong spot.
@@ -171,32 +259,60 @@ export function useHint(state: GameState, now: number, random: () => number = Ma
   cells[cell] = tile.tile; // any occupant goes back to the tray
 
   const next: GameState = {
-    ...state,
-    cells,
+    ...withCells(state, cells),
     hinted: [...state.hinted, cell],
     hintsUsed: state.hintsUsed + 1,
-    feedback: null,
   };
   return isSolved(next) ? win(next, now) : next;
+}
+
+/** Clues that can still be revealed, in board order. */
+export function cluesLeft(state: GameState): LineName[] {
+  return LINE_NAMES.filter((line) => !(state.clues ?? []).includes(line) && !isLineRight(state, line));
+}
+
+/** Reveals the clue of a word: the preferred one if it has none yet, otherwise the first without. */
+export function useClue(state: GameState, preferred: LineName | null): GameState {
+  if (state.status !== "playing" || hintsLeft(state) <= 0) return state;
+  const left = cluesLeft(state);
+  const line = preferred && left.includes(preferred) ? preferred : left[0];
+  if (!line) return state;
+  return { ...state, clues: [...(state.clues ?? []), line], hintsUsed: state.hintsUsed + 1, feedback: null };
+}
+
+/** Marks which complete words are right. Costs a hint only when there is something new to check. */
+export function useCheck(state: GameState): GameState {
+  if (state.status !== "playing" || hintsLeft(state) <= 0) return state;
+  const letters = boardLetters(state);
+  const lines = boardLayout(state).lines;
+  const complete = LINE_NAMES.filter((line) => lines[line].every((cell) => letters[cell] !== ""));
+  const already = state.checked ?? [];
+  if (complete.every((line) => already.includes(line))) return { ...state, feedback: { kind: "nothing-to-check" } };
+  const checked = complete.filter((line) => isLineRight(state, line));
+  return {
+    ...state,
+    checked,
+    hintsUsed: state.hintsUsed + 1,
+    feedback: { kind: "checked", right: checked.length, complete: complete.length },
+  };
+}
+
+/** Without a submit button (check hints): a full board is judged right away. */
+export function autoSubmit(state: GameState, now: number): GameState {
+  if (state.status !== "playing" || !isFull(state)) return state;
+  return isSolved(state) ? win(state, now) : { ...state, feedback: { kind: "full" } };
 }
 
 export function submit(state: GameState, validWords: ReadonlySet<string>, now: number): GameState {
   if (state.status !== "playing") return state;
 
-  const letters = boardLetters(state);
-  if (letters.some((letter) => letter === "")) return { ...state, feedback: { kind: "incomplete" } };
+  if (!isFull(state)) return { ...state, feedback: { kind: "incomplete" } };
   if (isSolved(state)) return win(state, now);
 
-  const words = wordsOnBoard(letters, size(state));
-  const [top, bottom, left, right] = state.puzzle;
-  const answer: Record<LineName, string> = { top, bottom, left, right };
-  const correctLines = LINE_NAMES.filter((line) => words[line] === answer[line]);
+  // On purpose no word-by-word feedback: a wrong board only says it's wrong.
+  const words = wordsOnBoard(boardLetters(state), size(state));
   const allReal = LINE_NAMES.every((line) => validWords.has(words[line]));
-  return {
-    ...state,
-    wrongSubmits: state.wrongSubmits + 1,
-    feedback: { kind: allReal ? "real-words" : "wrong", correctLines },
-  };
+  return { ...state, wrongSubmits: state.wrongSubmits + 1, feedback: { kind: allReal ? "real-words" : "wrong" } };
 }
 
 function win(state: GameState, now: number): GameState {

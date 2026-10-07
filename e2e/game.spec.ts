@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { encodeChallenge } from "../src/share.ts";
 import {
   cell,
@@ -123,15 +123,16 @@ for (const size of [5, 6]) {
 }
 
 test("archive: play a past puzzle without touching the streak", async ({ page }) => {
-  // Puzzle #3 is today, so #1 and #2 are in the archive.
+  // Puzzle #3 is today (Oct 8), so #1 and #2 are in the archive.
   await openGame(page, { date: new Date(2026, 9, 8, 12) });
   await page.locator("#mode-archive").click();
-  const days = page.locator(".archive-day");
-  await expect(days).toHaveCount(2);
-  await expect(days.first()).toContainText("#2");
-  await expect(days.first()).toContainText("Not played");
+  await expect(page.locator("#archive-month")).toContainText("2026");
+  await expect(page.locator(".archive-day.unplayed")).toHaveCount(2);
+  await expect(page.locator(".archive-day.today")).toHaveAttribute("data-day", "3");
+  await expect(page.locator("#archive-summary")).toHaveText("0 of 2 solved");
+  await expect(page.locator("#archive-next")).toBeDisabled();
 
-  await days.first().click();
+  await page.locator("#archive-unplayed").click(); // the latest unsolved: #2
   await expect(page.locator("#puzzle-label")).toContainText("#2");
   const { solution, layout } = await currentPuzzle(page, "archive");
   await solveByTyping(page, solution, layout.editable);
@@ -140,13 +141,75 @@ test("archive: play a past puzzle without touching the streak", async ({ page })
   await expect(page.locator("#next-button")).toHaveText("More puzzles");
 
   await page.locator("#next-button").click();
-  await expect(page.locator(".archive-day.solved")).toHaveCount(1);
-  await expect(page.locator(".archive-day").first()).toContainText("No hints");
+  await expect(page.locator('.archive-day.solved[data-day="2"]')).toBeVisible();
+  await expect(page.locator("#archive-summary")).toHaveText("1 of 2 solved");
+  await expect(page.locator("#archive-unplayed")).toContainText("#1");
   await page.locator("#archive-dialog [data-close]").click();
 
   await page.locator("#stats-button").click();
   await expect(page.locator("#stat-streak")).toHaveText("0");
   await expect(page.locator("#stat-extra")).toContainText("Past puzzles solved: 1");
+});
+
+test("archive: months a year later", async ({ page }) => {
+  await openGame(page, { date: new Date(2027, 9, 7, 12) });
+  await page.locator("#mode-archive").click();
+  await expect(page.locator("#archive-month")).toContainText("2027");
+  await expect(page.locator(".archive-day.today")).toHaveCount(1);
+  for (let i = 0; i < 12; i++) await page.locator("#archive-prev").click();
+  await expect(page.locator("#archive-month")).toContainText("2026");
+  await expect(page.locator("#archive-prev")).toBeDisabled();
+  await expect(page.locator('.archive-day[data-day="1"]')).toHaveText("6");
+  // The dialog fits without scrolling the page.
+  const box = (await page.locator("#archive-dialog").boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+});
+
+test.describe("hint types", () => {
+  async function chooseHintType(page: Page, type: string) {
+    await page.locator("#help-button").click();
+    await page.locator("#hint-type").selectOption(type);
+    await page.locator("#help-dialog [data-close]").click();
+  }
+
+  test("most useful letter fills a letter next to a corner or a hint", async ({ page }) => {
+    await openGame(page);
+    await chooseHintType(page, "useful");
+    await page.locator("#hint-button").click();
+    const { state, layout, solution } = await currentPuzzle(page);
+    const cell = state.hinted[0];
+    const line = Object.values(layout.lines).find((cells) => cells.includes(cell))!;
+    expect(line.indexOf(cell)).toBe(1); // the 2nd letter of its word
+    await expect(page.locator(`[data-cell="${cell}"]`)).toHaveText(solution[cell]);
+  });
+
+  test("clue for the word with the highlighted square", async ({ page }) => {
+    await openGame(page);
+    await chooseHintType(page, "clue");
+    await expect(page.locator("#hint-button")).toHaveText("Clue (4)");
+    await cell(page, 4).click(); // a square of the left word
+    await page.locator("#hint-button").click();
+    await expect(page.locator(".clue")).toHaveCount(1);
+    await expect(page.locator(".clue strong")).toHaveText("Left");
+    await expect(page.locator("#hint-button")).toHaveText("Clue (3)");
+  });
+
+  test("check words: no submit button, a full right board wins by itself", async ({ page }) => {
+    await openGame(page);
+    await chooseHintType(page, "check");
+    await expect(page.locator("#submit-button")).toBeHidden();
+    const { solution, layout } = await currentPuzzle(page);
+
+    // Fill only the top word, check it.
+    const top = layout.lines.top.filter((c) => layout.editable.includes(c));
+    await solveByTyping(page, solution, top);
+    await page.locator("#hint-button").click();
+    await expect(page.locator("#message")).toHaveText("1 of 1 complete word is right.");
+    await expect(page.locator(".cell.correct")).toHaveCount(4);
+
+    await solveByTyping(page, solution, layout.editable.filter((c) => !top.includes(c)));
+    await expect(page.locator("#result-dialog")).toBeVisible();
+  });
 });
 
 test("a challenge link opens the friend's puzzle", async ({ page }) => {

@@ -7,16 +7,19 @@ import {
   msUntilNextPuzzle,
   puzzleDate,
   puzzleNumber,
+  type Definition,
   type PuzzleSet,
 } from "./daily.ts";
 import { enablePointerInput } from "./dragdrop.ts";
-import { layout, SIZES } from "./puzzle.ts";
+import { layout, LINE_NAMES, SIZES, type LineName } from "./puzzle.ts";
 import { decodeChallenge, encodeChallenge, formatTime, shareText, type Challenge, type PuzzleRef } from "./share.ts";
 import {
+  autoSubmit,
   boardLayout,
   boardLetters,
   cellOfTile,
   clearBoard,
+  cluesLeft,
   elapsedMs,
   hintsLeft,
   isEditable,
@@ -26,8 +29,13 @@ import {
   pause,
   resume,
   submit,
+  useCheck,
+  useClue,
   useHint,
+  useUsefulHint,
+  HINT_TYPES,
   type GameState,
+  type HintType,
 } from "./state.ts";
 import {
   liveStreak,
@@ -64,6 +72,7 @@ const el = {
   pauseOverlay: $("pause-overlay"),
   resumeButton: $<HTMLButtonElement>("resume-button"),
   hintButton: $<HTMLButtonElement>("hint-button"),
+  hintType: $<HTMLSelectElement>("hint-type"),
   clearButton: $<HTMLButtonElement>("clear-button"),
   submitButton: $<HTMLButtonElement>("submit-button"),
   resultDialog: $<HTMLDialogElement>("result-dialog"),
@@ -84,7 +93,13 @@ const el = {
   helpDialog: $<HTMLDialogElement>("help-dialog"),
   archiveDialog: $<HTMLDialogElement>("archive-dialog"),
   archiveTitle: $("archive-title"),
-  archiveList: $("archive-list"),
+  archiveMonth: $("archive-month"),
+  archiveSummary: $("archive-summary"),
+  archivePrev: $<HTMLButtonElement>("archive-prev"),
+  archiveNext: $<HTMLButtonElement>("archive-next"),
+  archiveWeekdays: $("archive-weekdays"),
+  archiveGrid: $("archive-grid"),
+  archiveUnplayed: $<HTMLButtonElement>("archive-unplayed"),
   archiveEmpty: $("archive-empty"),
 };
 
@@ -108,6 +123,15 @@ let toast = "";
 let trayKey = "";
 let boardSize = 0;
 let cellEls: HTMLElement[] = [];
+let cluesEl: HTMLElement | null = null;
+/** On the small 4-letter board one clue shows at a time: this one, unless the highlighted square's word has a clue. */
+let clueShown: LineName | null = null;
+/** Definitions of the current word length, once loaded (for clue hints). */
+let definitions: { size: number; words: Record<string, Definition> } | null = null;
+/** Temporary: which kind of hint the hint button gives, to try them out. */
+let hintType: HintType = HINT_TYPES.find((t) => t === loadSetting("hint-type")) ?? "letter";
+/** The month the archive shows: [year, month (0-11)], kept while the page is open. */
+let archiveMonth: [number, number] | null = null;
 /** Increases with every game start, so a slow data load can't start an outdated game. */
 let startToken = 0;
 
@@ -160,7 +184,12 @@ function buildBoard() {
     div.style.gridColumn = String(positions[cell][1] + 1);
     return div;
   });
-  el.board.replaceChildren(...cellEls);
+  // Clues (clue hints) are shown in the empty middle of the frame.
+  cluesEl = document.createElement("div");
+  cluesEl.className = "clues";
+  cluesEl.setAttribute("aria-live", "polite");
+  cluesEl.style.gridArea = `2 / 2 / ${size} / ${size}`;
+  el.board.replaceChildren(...cellEls, cluesEl);
   trayKey = "";
 }
 
@@ -239,6 +268,8 @@ function leaveChallenge() {
 
 function setState(next: GameState) {
   if (next === state) return;
+  // With check hints there is no submit button: a full board is judged right away.
+  if (hintType === "check" && next.cells !== state.cells) next = autoSubmit(next, Date.now());
   const justWon = state.status !== "won" && next.status === "won";
   state = next;
   toast = "";
@@ -246,6 +277,7 @@ function setState(next: GameState) {
   persist();
   render();
   if (justWon) setTimeout(showResult, 700);
+  if (next.feedback?.kind === "full") shake();
 }
 
 function recordWin() {
@@ -285,11 +317,73 @@ function feedbackText(): string {
     case "real-words":
       return "Those are real words, but not the ones we're looking for!";
     case "wrong":
-      return f.correctLines.length > 0
-        ? `Not quite. ${f.correctLines.length} of 4 words ${f.correctLines.length === 1 ? "is" : "are"} right.`
-        : "Not quite, try again!";
+      return "Not quite, try again!";
+    case "full":
+      return "Not quite yet. Check a word if you're stuck.";
+    case "checked":
+      return `${f.right} of ${f.complete} complete ${f.complete === 1 ? "word is" : "words are"} right.`;
+    case "nothing-to-check":
+      return "Complete a word first, then check it.";
     case "won":
       return "Solved!";
+  }
+  return "";
+}
+
+const HINT_LABELS: Record<HintType, string> = { letter: "Hint", useful: "Hint", clue: "Clue", check: "Check" };
+
+/** The word an editable cell belongs to (every non-corner cell is in exactly one word). */
+function lineOfCell(cell: number | null): LineName | null {
+  if (cell === null) return null;
+  const { lines, corners } = boardLayout(state);
+  if (corners.includes(cell)) return null;
+  return LINE_NAMES.find((line) => lines[line].includes(cell)) ?? null;
+}
+
+function renderClues() {
+  if (!cluesEl) return;
+  const clues = state.clues ?? [];
+  cluesEl.hidden = clues.length === 0;
+  if (clues.length === 0) return;
+  if (definitions?.size !== size) {
+    const n = size;
+    loadDefinitions(n)
+      .then((words) => {
+        definitions = { size: n, words };
+        if (n === size) renderClues();
+      })
+      .catch(() => {});
+    cluesEl.textContent = "Loading clues…";
+    return;
+  }
+  const words = definitions.words;
+  const cursorLine = lineOfCell(cursor);
+  const active = cursorLine && clues.includes(cursorLine) ? cursorLine : clueShown && clues.includes(clueShown) ? clueShown : clues.at(-1)!;
+  const [top, bottom, left, right] = state.puzzle;
+  const answer: Record<LineName, string> = { top, bottom, left, right };
+  const names: Record<LineName, string> = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
+  cluesEl.replaceChildren(
+    ...clues.map((line) => {
+      const p = document.createElement("p");
+      p.className = "clue" + (line === active ? " active" : "");
+      const label = document.createElement("strong");
+      label.textContent = names[line];
+      const text = words[answer[line]]?.text.split(";")[0] ?? "no clue available";
+      p.append(label, ` ${text}`);
+      return p;
+    })
+  );
+  if (clues.length > 1) {
+    const more = document.createElement("button");
+    more.className = "clue-next";
+    more.textContent = `${clues.indexOf(active) + 1}/${clues.length} ›`;
+    more.setAttribute("aria-label", "Next clue");
+    more.addEventListener("click", () => {
+      clueShown = clues[(clues.indexOf(active) + 1) % clues.length];
+      cursor = null; // so the chosen clue shows, not the highlighted square's
+      render();
+    });
+    cluesEl.append(more);
   }
 }
 
@@ -298,9 +392,7 @@ function render() {
   const { corners, lines } = boardLayout(state);
   const playing = state.status === "playing";
   const correctCells = new Set<number>();
-  if (state.feedback && "correctLines" in state.feedback) {
-    for (const line of state.feedback.correctLines) lines[line].forEach((c) => correctCells.add(c));
-  }
+  for (const line of state.checked ?? []) lines[line].forEach((c) => correctCells.add(c));
 
   cellEls.forEach((div, cell) => {
     const tile = state.cells[cell];
@@ -321,12 +413,15 @@ function render() {
   el.board.classList.toggle("solved", state.status === "won");
 
   renderTray();
+  renderClues();
 
+  const left = hintType === "clue" ? Math.min(hintsLeft(state), cluesLeft(state).length) : hintsLeft(state);
   el.message.textContent = feedbackText();
-  el.hintButton.textContent = `Hint (${hintsLeft(state)})`;
-  el.hintButton.disabled = !playing || hintsLeft(state) <= 0;
+  el.hintButton.textContent = `${HINT_LABELS[hintType]} (${left})`;
+  el.hintButton.disabled = !playing || left <= 0;
   el.clearButton.disabled = !playing;
   el.submitButton.disabled = !playing;
+  el.submitButton.hidden = hintType === "check";
   el.pauseButton.hidden = state.status === "won";
   el.pauseButton.textContent = state.status === "paused" ? "Resume" : "Pause";
   el.pauseOverlay.hidden = state.status !== "paused";
@@ -524,34 +619,122 @@ function showStats() {
   el.statsDialog.showModal();
 }
 
+type DayStatus = "solved" | "started" | "unplayed";
+
+function dayStatus(day: number, inProgress: ReturnType<typeof loadGame>): DayStatus {
+  if (results[day]) return "solved";
+  return inProgress?.id === day && inProgress.state.status !== "won" ? "started" : "unplayed";
+}
+
+function hintsText(hints: number) {
+  return hints === 0 ? "no hints" : hints === 1 ? "1 hint" : `${hints} hints`;
+}
+
+/** The archive is a calendar, one month at a time. Past days can be played; today links to the daily. */
 function showArchive() {
-  const last = today() - 1;
+  const todayNumber = today();
+  const last = todayNumber - 1;
+  const first = puzzleDate(1);
+  const now = puzzleDate(todayNumber);
+  if (!archiveMonth) {
+    const latest = puzzleDate(Math.max(1, last));
+    archiveMonth = [latest.getFullYear(), latest.getMonth()];
+  }
+  const [year, month] = archiveMonth;
   const inProgress = loadGame("archive", size);
+
   el.archiveTitle.textContent = `Archive${sizeSuffix(size)}`;
   el.archiveEmpty.hidden = last >= 1;
-  el.archiveList.replaceChildren(
-    ...Array.from({ length: Math.max(0, last) }, (_, i) => {
-      const day = last - i;
+  el.archiveMonth.textContent = new Date(year, month, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  el.archivePrev.disabled = year * 12 + month <= first.getFullYear() * 12 + first.getMonth();
+  el.archiveNext.disabled = year * 12 + month >= now.getFullYear() * 12 + now.getMonth();
+
+  // Weekday names, Monday first (2024-01-01 was a Monday).
+  el.archiveWeekdays.replaceChildren(
+    ...Array.from({ length: 7 }, (_, i) => {
+      const span = document.createElement("span");
+      span.textContent = new Date(2024, 0, 1 + i).toLocaleDateString(undefined, { weekday: "narrow" });
+      return span;
+    })
+  );
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+  let solved = 0;
+  let playable = 0;
+  const squares: HTMLElement[] = Array.from({ length: offset }, () => document.createElement("span"));
+  for (let date = 1; date <= daysInMonth; date++) {
+    const day = puzzleNumber(new Date(year, month, date));
+    const button = document.createElement("button");
+    button.className = "archive-day";
+    button.dataset.day = String(day);
+    button.textContent = String(date);
+    const label = new Date(year, month, date).toLocaleDateString(undefined, { day: "numeric", month: "long" });
+    if (day < 1 || day > todayNumber) {
+      button.disabled = true;
+      button.classList.add("outside");
+      button.setAttribute("aria-label", label);
+    } else if (day === todayNumber) {
+      button.classList.add("today");
+      button.setAttribute("aria-label", `${label}, today's puzzle`);
+      button.addEventListener("click", () => {
+        leaveChallenge();
+        startDaily();
+      });
+    } else {
+      const status = dayStatus(day, inProgress);
+      playable++;
+      button.classList.add(status);
       const result = results[day];
-      const started = !result && inProgress?.id === day && inProgress.state.status !== "won";
-      const button = document.createElement("button");
-      button.className = "archive-day" + (result ? " solved" : started ? " started" : "");
-      const status = result
-        ? `${result.hints === 0 ? "No hints" : result.hints === 1 ? "1 hint" : `${result.hints} hints`}`
-        : started
-          ? "In progress"
-          : "Not played";
-      button.innerHTML = `<span class="archive-number">#${day}</span><span class="archive-date">${shortDate(day)}</span><span class="archive-status">${status}</span>`;
-      button.setAttribute("aria-label", `Puzzle ${day}, ${shortDate(day)}, ${status}`);
+      if (result) {
+        solved++;
+        if (result.hints > 0) {
+          const badge = document.createElement("span");
+          badge.className = "archive-hints";
+          badge.textContent = String(result.hints);
+          button.append(badge);
+        }
+      }
+      const statusText = result ? `solved with ${hintsText(result.hints)}` : status === "started" ? "in progress" : "not played";
+      button.setAttribute("aria-label", `Puzzle ${day}, ${label}, ${statusText}`);
+      button.title = `#${day} · ${statusText}`;
       button.addEventListener("click", () => {
         leaveChallenge();
         startArchive(day);
       });
-      return button;
-    })
-  );
-  el.archiveDialog.showModal();
+    }
+    squares.push(button);
+  }
+  el.archiveGrid.replaceChildren(...squares);
+  el.archiveSummary.textContent = playable ? `${solved} of ${playable} solved` : "";
+
+  const unplayed = latestUnplayed(inProgress);
+  el.archiveUnplayed.hidden = unplayed === null;
+  el.archiveUnplayed.dataset.day = unplayed === null ? "" : String(unplayed);
+  el.archiveUnplayed.textContent = unplayed === null ? "" : `Latest unsolved: #${unplayed}`;
+
+  if (!el.archiveDialog.open) el.archiveDialog.showModal();
 }
+
+/** The most recent past puzzle that isn't solved yet. */
+function latestUnplayed(inProgress: ReturnType<typeof loadGame>): number | null {
+  for (let day = today() - 1; day >= 1; day--) if (dayStatus(day, inProgress) !== "solved") return day;
+  return null;
+}
+
+function moveArchiveMonth(delta: number) {
+  if (!archiveMonth) return;
+  const d = new Date(archiveMonth[0], archiveMonth[1] + delta, 1);
+  archiveMonth = [d.getFullYear(), d.getMonth()];
+  showArchive();
+}
+
+el.archivePrev.addEventListener("click", () => moveArchiveMonth(-1));
+el.archiveNext.addEventListener("click", () => moveArchiveMonth(1));
+el.archiveUnplayed.addEventListener("click", () => {
+  leaveChallenge();
+  startArchive(Number(el.archiveUnplayed.dataset.day));
+});
 
 // ---------- Input: taps and drag and drop ----------
 
@@ -659,7 +842,7 @@ document.addEventListener("keydown", (e) => {
   const key = e.key;
   if (/^[a-zA-Z]$/.test(key)) typeLetter(key.toUpperCase());
   else if (key === "Backspace" || key === "Delete") backspace();
-  else if (key === "Enter") setState(submit(state, set.valid, Date.now()));
+  else if (key === "Enter") submitBoard();
   else if (key === "ArrowLeft") moveCursor(0, -1);
   else if (key === "ArrowRight") moveCursor(0, 1);
   else if (key === "ArrowUp") moveCursor(-1, 0);
@@ -673,7 +856,14 @@ document.addEventListener("keydown", (e) => {
 // ---------- Buttons ----------
 
 el.hintButton.addEventListener("click", () => {
-  setState(useHint(state, Date.now()));
+  const now = Date.now();
+  if (hintType === "letter") setState(useHint(state, now));
+  else if (hintType === "useful") setState(useUsefulHint(state, set.valid, now));
+  else if (hintType === "clue") {
+    setState(useClue(state, lineOfCell(cursor)));
+    clueShown = state.clues?.at(-1) ?? null;
+  }
+  else setState(useCheck(state));
   // The hint may have landed on the highlighted square: move on to the next free one.
   if (cursor !== null && !isEditable(state, cursor)) cursor = firstEmptyCell(cursor);
   // The hint may also have used the picked-up tile.
@@ -685,10 +875,21 @@ el.clearButton.addEventListener("click", () => {
   cursor = firstEmptyCell();
   render();
 });
-el.submitButton.addEventListener("click", () => {
+function submitBoard() {
+  if (hintType === "check") return; // judged automatically
   const next = submit(state, set.valid, Date.now());
   setState(next);
   if (next.feedback?.kind === "wrong" || next.feedback?.kind === "real-words") shake();
+}
+el.submitButton.addEventListener("click", submitBoard);
+
+el.hintType.value = hintType;
+el.hintType.addEventListener("change", () => {
+  hintType = el.hintType.value as HintType;
+  saveSetting("hint-type", hintType);
+  // Switching to check hints: a board that is already full and right wins now.
+  if (hintType === "check") setState(autoSubmit(state, Date.now()));
+  render();
 });
 el.pauseButton.addEventListener("click", () =>
   setState(state.status === "paused" ? resume(state, Date.now()) : pause(state, Date.now()))
