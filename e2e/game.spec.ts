@@ -251,6 +251,20 @@ test.describe("hints", () => {
   });
 });
 
+test("coming back continues in practice mode", async ({ page }) => {
+  await openGame(page);
+  await page.locator("#mode-practice").click();
+  await expect(page.locator("#mode-practice")).toHaveAttribute("aria-pressed", "true");
+  const before = await currentPuzzle(page, "practice");
+  await page.reload();
+  await expect(page.locator("#mode-practice")).toHaveAttribute("aria-pressed", "true");
+  expect((await currentPuzzle(page, "practice")).puzzle).toEqual(before.puzzle);
+
+  await page.locator("#mode-daily").click();
+  await page.reload();
+  await expect(page.locator("#mode-daily")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("a challenge link opens the friend's puzzle", async ({ page }) => {
   const code = encodeChallenge({ ref: { kind: "daily", size: 5, number: 1 }, hints: 2, seconds: 95 });
   await page.clock.setFixedTime(new Date(2026, 9, 8, 12));
