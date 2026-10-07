@@ -18,6 +18,7 @@ import {
   boardLetters,
   cellOfTile,
   clearBoard,
+  clueLine,
   cluesLeft,
   elapsedMs,
   isEditable,
@@ -26,6 +27,7 @@ import {
   newGame,
   pause,
   resume,
+  letterHintLine,
   lettersLeft,
   submit,
   useClue,
@@ -114,6 +116,8 @@ let results: Results;
 let challenge: Challenge | null = null;
 let selectedTile: number | null = null;
 let cursor: number | null = null;
+/** The hint button under the mouse (or focused): its target is highlighted on the board. */
+let hintPreview: "clue" | "letter" | null = null;
 /** The square the last typed letter went to, so Backspace can undo it after the highlight jumped to the next word. */
 let lastTyped: number | null = null;
 let toast = "";
@@ -123,6 +127,8 @@ let cellEls: HTMLElement[] = [];
 let cluesEl: HTMLElement | null = null;
 /** On the small 4-letter board one clue shows at a time: this one, unless the highlighted square's word has a clue. */
 let clueShown: LineName | null = null;
+/** What the clue panel shows now; it is only rebuilt when this changes (a rebuild mid-click loses the click). */
+let cluesKey = "";
 /** Definitions of the current word length, once loaded (for clue hints). */
 let definitions: { size: number; words: Record<string, Definition> } | null = null;
 /** The month the archive shows: [year, month (0-11)], kept while the page is open. */
@@ -180,6 +186,7 @@ function buildBoard() {
     return div;
   });
   // Clues (clue hints) are shown in the empty middle of the frame.
+  cluesKey = "";
   cluesEl = document.createElement("div");
   cluesEl.className = "clues";
   cluesEl.setAttribute("aria-live", "polite");
@@ -338,6 +345,7 @@ function renderClues() {
       })
       .catch(() => {});
     cluesEl.textContent = "Loading clues…";
+    cluesKey = "";
     return;
   }
   const words = definitions.words;
@@ -346,6 +354,9 @@ function renderClues() {
   const [top, bottom, left, right] = state.puzzle;
   const answer: Record<LineName, string> = { top, bottom, left, right };
   const names: Record<LineName, string> = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
+  const key = [state.puzzle.join(), clues.join(), active].join("|");
+  if (key === cluesKey) return;
+  cluesKey = key;
   cluesEl.replaceChildren(
     ...clues.map((line) => {
       const p = document.createElement("p");
@@ -376,6 +387,17 @@ function render() {
   const { corners } = boardLayout(state);
   const playing = state.status === "playing";
 
+  // Hovering a hint button shows where it goes: the square a letter fills, or the word a clue explains.
+  const previewCells = new Set<number>();
+  if (playing && hintPreview) {
+    const preferred = lineOfCell(cursor);
+    const line = hintPreview === "clue" ? clueLine(state, preferred) : letterHintLine(state, preferred);
+    if (line) {
+      const cells = boardLayout(state).lines[line];
+      (hintPreview === "clue" ? cells : [cells[2]]).forEach((c) => previewCells.add(c));
+    }
+  }
+
   cellEls.forEach((div, cell) => {
     const tile = state.cells[cell];
     const corner = corners.includes(cell);
@@ -386,6 +408,7 @@ function render() {
     div.classList.toggle("filled", tile !== null);
     div.classList.toggle("editable", isEditable(state, cell));
     div.classList.toggle("cursor", playing && cell === cursor);
+    div.classList.toggle("preview", previewCells.has(cell));
     if (tile !== null && !hinted && playing) div.dataset.tile = String(tile);
     else delete div.dataset.tile;
     div.setAttribute("aria-label", `${letters[cell] || "empty"}${corner ? ", given" : hinted ? ", hint" : ""}`);
@@ -879,6 +902,20 @@ el.clueButton.addEventListener("click", () => {
   clueShown = state.clues?.at(-1) ?? null;
   render();
 });
+for (const [button, kind] of [
+  [el.clueButton, "clue"],
+  [el.letterButton, "letter"],
+] as const) {
+  const show = (on: boolean) => {
+    hintPreview = on ? kind : null;
+    render();
+  };
+  // Mouse only: on touch screens a tap would leave the highlight stuck.
+  button.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && show(true));
+  button.addEventListener("pointerleave", (e) => e.pointerType === "mouse" && show(false));
+  button.addEventListener("focus", () => button.matches(":focus-visible") && show(true));
+  button.addEventListener("blur", () => show(false));
+}
 el.letterButton.addEventListener("click", () => {
   setState(useLetterHint(state, lineOfCell(cursor), Date.now()));
   // The hint may have landed on the highlighted square: move on to the next free one.

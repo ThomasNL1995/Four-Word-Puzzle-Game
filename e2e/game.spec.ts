@@ -89,6 +89,20 @@ test("solve the daily with a wrong guess and a hint", async ({ page }) => {
   await expect(page.locator("#stat-streak")).toHaveText("1");
 });
 
+test("hovering a hint button shows where it goes", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "mouse only");
+  await openGame(page);
+  await cell(page, 4).click(); // the left word: cells 0, 4, 6, 8
+  await page.locator("#letter-button").hover();
+  await expect(page.locator(".cell.preview")).toHaveCount(1);
+  await expect(cell(page, 6)).toHaveClass(/preview/); // its 3rd letter
+  await page.locator("#clue-button").hover();
+  await expect(page.locator(".cell.preview")).toHaveCount(4);
+  await expect(cell(page, 8)).toHaveClass(/preview/);
+  await page.mouse.move(0, 0);
+  await expect(page.locator(".cell.preview")).toHaveCount(0);
+});
+
 test("a hint on the highlighted square moves the highlight on", async ({ page }) => {
   await openGame(page);
   const { solution, layout } = await currentPuzzle(page);
