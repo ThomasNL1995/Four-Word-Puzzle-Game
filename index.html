@@ -56,7 +56,10 @@
           <button class="size" data-size-choice="5" aria-pressed="false" aria-label="5 letters">5</button>
           <button class="size" data-size-choice="6" aria-pressed="false" aria-label="6 letters">6</button>
         </div>
-        <button class="link-button" id="pause-button">Pause</button>
+        <div class="toolbar-links">
+          <button class="link-button" id="clear-button">Clear</button>
+          <button class="link-button" id="pause-button">Pause</button>
+        </div>
       </div>
 
       <div class="board-wrap">
@@ -72,8 +75,8 @@
       <div class="tray" id="tray" aria-label="Available letters"></div>
 
       <div class="actions">
-        <button class="button" id="hint-button">Hint</button>
-        <button class="button" id="clear-button">Clear</button>
+        <button class="button" id="clue-button">Clue</button>
+        <button class="button" id="letter-button">Letter</button>
         <button class="button primary" id="submit-button">Submit</button>
       </div>
     </main>
@@ -145,23 +148,8 @@
         <li><strong>Drag</strong> a letter onto a square, or <strong>tap</strong> a letter and then a square.</li>
         <li>Drag a placed letter to another square to swap, or off the board to remove it.</li>
         <li>On a keyboard: type letters to fill the highlighted square, Backspace to remove, arrows to move, Enter to submit.</li>
-        <li>Stuck? Use a hint. Try to solve it with as few hints as possible.</li>
+        <li>Stuck? <strong>Clue</strong> shows what a word means, <strong>Letter</strong> reveals its 3rd letter. Both work on the word with the highlighted square. You get four of each; try to solve it with as few hints as possible.</li>
       </ul>
-      <div class="hint-setting">
-        <label for="hint-type">Hint type <span class="testing">(testing)</span></label>
-        <select id="hint-type">
-          <option value="letter">Random letter</option>
-          <option value="useful">Most useful letter</option>
-          <option value="clue">Clue for a word</option>
-          <option value="check">Check words (no submit)</option>
-        </select>
-        <p class="hint-setting-help" id="hint-type-help">
-          <strong>Random letter</strong> places a random correct letter.
-          <strong>Most useful letter</strong> places the next letter of the word with the most possible answers.
-          <strong>Clue</strong> shows what a word means, for the word with the highlighted square.
-          <strong>Check</strong> marks which complete words are right; there is no submit button, a full and right board wins by itself.
-        </p>
-      </div>
       <p>New daily puzzles (one for each word length) appear every day at midnight. Missed one? Find it in the archive. Share your result and challenge your friends!</p>
       <p class="credits">
         Word lists: <a href="http://wordlist.aspell.net/" target="_blank" rel="noopener">SCOWL</a> and

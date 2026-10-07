@@ -18,7 +18,16 @@ export interface Stats {
   practiceSolved: number;
 }
 
-export function emptyStats(size = 4): Stats {
+/** One bar per possible hint count; older stats may have a different length or gaps. */
+function fitDistribution(counts: number[]): number[] {
+  let length = maxHints() + 1;
+  counts.forEach((n, i) => {
+    if (n > 0) length = Math.max(length, i + 1);
+  });
+  return Array.from({ length }, (_, i) => counts[i] ?? 0);
+}
+
+export function emptyStats(): Stats {
   return {
     played: 0,
     solved: 0,
@@ -26,7 +35,7 @@ export function emptyStats(size = 4): Stats {
     maxStreak: 0,
     lastPlayedDay: null,
     lastSolvedDay: null,
-    hintDistribution: new Array(maxHints(size) + 1).fill(0),
+    hintDistribution: fitDistribution([]),
     bestSeconds: null,
     practiceSolved: 0,
   };
@@ -42,6 +51,7 @@ export function recordDailyWin(stats: Stats, day: number, hints: number, seconds
   const currentStreak = stats.lastSolvedDay === day - 1 ? stats.currentStreak + 1 : 1;
   const hintDistribution = [...stats.hintDistribution];
   hintDistribution[hints] = (hintDistribution[hints] ?? 0) + 1;
+  hintDistribution.splice(0, Infinity, ...fitDistribution(hintDistribution));
   return {
     ...stats,
     solved: stats.solved + 1,
@@ -95,7 +105,8 @@ function write(key: string, value: unknown): void {
 }
 
 export function loadStats(size: number): Stats {
-  return { ...emptyStats(size), ...read<Partial<Stats>>(key("stats", size)) };
+  const stats: Stats = { ...emptyStats(), ...read<Partial<Stats>>(key("stats", size)) };
+  return { ...stats, hintDistribution: fitDistribution(stats.hintDistribution) };
 }
 
 export function saveStats(size: number, stats: Stats): void {

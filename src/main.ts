@@ -14,28 +14,23 @@ import { enablePointerInput } from "./dragdrop.ts";
 import { layout, LINE_NAMES, SIZES, type LineName } from "./puzzle.ts";
 import { decodeChallenge, encodeChallenge, formatTime, shareText, type Challenge, type PuzzleRef } from "./share.ts";
 import {
-  autoSubmit,
   boardLayout,
   boardLetters,
   cellOfTile,
   clearBoard,
   cluesLeft,
   elapsedMs,
-  hintsLeft,
   isEditable,
   isTileLocked,
   moveTile,
   newGame,
   pause,
   resume,
+  lettersLeft,
   submit,
-  useCheck,
   useClue,
-  useHint,
-  useUsefulHint,
-  HINT_TYPES,
+  useLetterHint,
   type GameState,
-  type HintType,
 } from "./state.ts";
 import {
   liveStreak,
@@ -71,8 +66,8 @@ const el = {
   pauseButton: $<HTMLButtonElement>("pause-button"),
   pauseOverlay: $("pause-overlay"),
   resumeButton: $<HTMLButtonElement>("resume-button"),
-  hintButton: $<HTMLButtonElement>("hint-button"),
-  hintType: $<HTMLSelectElement>("hint-type"),
+  clueButton: $<HTMLButtonElement>("clue-button"),
+  letterButton: $<HTMLButtonElement>("letter-button"),
   clearButton: $<HTMLButtonElement>("clear-button"),
   submitButton: $<HTMLButtonElement>("submit-button"),
   resultDialog: $<HTMLDialogElement>("result-dialog"),
@@ -128,8 +123,6 @@ let cluesEl: HTMLElement | null = null;
 let clueShown: LineName | null = null;
 /** Definitions of the current word length, once loaded (for clue hints). */
 let definitions: { size: number; words: Record<string, Definition> } | null = null;
-/** Temporary: which kind of hint the hint button gives, to try them out. */
-let hintType: HintType = HINT_TYPES.find((t) => t === loadSetting("hint-type")) ?? "letter";
 /** The month the archive shows: [year, month (0-11)], kept while the page is open. */
 let archiveMonth: [number, number] | null = null;
 /** Increases with every game start, so a slow data load can't start an outdated game. */
@@ -268,8 +261,6 @@ function leaveChallenge() {
 
 function setState(next: GameState) {
   if (next === state) return;
-  // With check hints there is no submit button: a full board is judged right away.
-  if (hintType === "check" && next.cells !== state.cells) next = autoSubmit(next, Date.now());
   const justWon = state.status !== "won" && next.status === "won";
   state = next;
   toast = "";
@@ -277,7 +268,6 @@ function setState(next: GameState) {
   persist();
   render();
   if (justWon) setTimeout(showResult, 700);
-  if (next.feedback?.kind === "full") shake();
 }
 
 function recordWin() {
@@ -318,19 +308,11 @@ function feedbackText(): string {
       return "Those are real words, but not the ones we're looking for!";
     case "wrong":
       return "Not quite, try again!";
-    case "full":
-      return "Not quite yet. Check a word if you're stuck.";
-    case "checked":
-      return `${f.right} of ${f.complete} complete ${f.complete === 1 ? "word is" : "words are"} right.`;
-    case "nothing-to-check":
-      return "Complete a word first, then check it.";
     case "won":
       return "Solved!";
   }
   return "";
 }
-
-const HINT_LABELS: Record<HintType, string> = { letter: "Hint", useful: "Hint", clue: "Clue", check: "Check" };
 
 /** The word an editable cell belongs to (every non-corner cell is in exactly one word). */
 function lineOfCell(cell: number | null): LineName | null {
@@ -389,10 +371,8 @@ function renderClues() {
 
 function render() {
   const letters = boardLetters(state);
-  const { corners, lines } = boardLayout(state);
+  const { corners } = boardLayout(state);
   const playing = state.status === "playing";
-  const correctCells = new Set<number>();
-  for (const line of state.checked ?? []) lines[line].forEach((c) => correctCells.add(c));
 
   cellEls.forEach((div, cell) => {
     const tile = state.cells[cell];
@@ -404,7 +384,6 @@ function render() {
     div.classList.toggle("filled", tile !== null);
     div.classList.toggle("editable", isEditable(state, cell));
     div.classList.toggle("cursor", playing && cell === cursor);
-    div.classList.toggle("correct", correctCells.has(cell));
     if (tile !== null && !hinted && playing) div.dataset.tile = String(tile);
     else delete div.dataset.tile;
     div.setAttribute("aria-label", `${letters[cell] || "empty"}${corner ? ", given" : hinted ? ", hint" : ""}`);
@@ -415,19 +394,22 @@ function render() {
   renderTray();
   renderClues();
 
-  const left = hintType === "clue" ? Math.min(hintsLeft(state), cluesLeft(state).length) : hintsLeft(state);
+  const cluesLeftCount = cluesLeft(state).length;
+  const lettersLeftCount = lettersLeft(state).length;
   el.message.textContent = feedbackText();
-  el.hintButton.textContent = `${HINT_LABELS[hintType]} (${left})`;
-  el.hintButton.disabled = !playing || left <= 0;
+  el.clueButton.textContent = `Clue (${cluesLeftCount})`;
+  el.clueButton.disabled = !playing || cluesLeftCount === 0;
+  el.letterButton.textContent = `Letter (${lettersLeftCount})`;
+  el.letterButton.disabled = !playing || lettersLeftCount === 0;
   el.clearButton.disabled = !playing;
   el.submitButton.disabled = !playing;
-  el.submitButton.hidden = hintType === "check";
   el.pauseButton.hidden = state.status === "won";
   el.pauseButton.textContent = state.status === "paused" ? "Resume" : "Pause";
   el.pauseOverlay.hidden = state.status !== "paused";
 
   el.puzzleLabel.textContent =
-    mode === "practice" ? `Practice #${gameId + 1}` : mode === "archive" ? `#${gameId} · ${shortDate(gameId)}` : `#${gameId}`;
+    `#${mode === "practice" ? gameId + 1 : gameId}`; // the mode buttons say which kind
+  el.puzzleLabel.title = mode === "practice" ? "" : shortDate(gameId);
   el.modeDaily.setAttribute("aria-pressed", String(mode === "daily"));
   el.modeArchive.setAttribute("aria-pressed", String(mode === "archive"));
   el.modePractice.setAttribute("aria-pressed", String(mode === "practice"));
@@ -855,15 +837,14 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- Buttons ----------
 
-el.hintButton.addEventListener("click", () => {
-  const now = Date.now();
-  if (hintType === "letter") setState(useHint(state, now));
-  else if (hintType === "useful") setState(useUsefulHint(state, set.valid, now));
-  else if (hintType === "clue") {
-    setState(useClue(state, lineOfCell(cursor)));
-    clueShown = state.clues?.at(-1) ?? null;
-  }
-  else setState(useCheck(state));
+// Hints go to the word with the highlighted square when they can.
+el.clueButton.addEventListener("click", () => {
+  setState(useClue(state, lineOfCell(cursor)));
+  clueShown = state.clues?.at(-1) ?? null;
+  render();
+});
+el.letterButton.addEventListener("click", () => {
+  setState(useLetterHint(state, lineOfCell(cursor), Date.now()));
   // The hint may have landed on the highlighted square: move on to the next free one.
   if (cursor !== null && !isEditable(state, cursor)) cursor = firstEmptyCell(cursor);
   // The hint may also have used the picked-up tile.
@@ -876,21 +857,12 @@ el.clearButton.addEventListener("click", () => {
   render();
 });
 function submitBoard() {
-  if (hintType === "check") return; // judged automatically
   const next = submit(state, set.valid, Date.now());
   setState(next);
   if (next.feedback?.kind === "wrong" || next.feedback?.kind === "real-words") shake();
 }
 el.submitButton.addEventListener("click", submitBoard);
 
-el.hintType.value = hintType;
-el.hintType.addEventListener("change", () => {
-  hintType = el.hintType.value as HintType;
-  saveSetting("hint-type", hintType);
-  // Switching to check hints: a board that is already full and right wins now.
-  if (hintType === "check") setState(autoSubmit(state, Date.now()));
-  render();
-});
 el.pauseButton.addEventListener("click", () =>
   setState(state.status === "paused" ? resume(state, Date.now()) : pause(state, Date.now()))
 );

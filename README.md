@@ -7,9 +7,9 @@ A daily word puzzle. Four hidden words form a frame: the top and bottom words re
 - Drag a letter onto a square (works with mouse and touch), or tap a letter and then a square.
 - Drag a placed letter onto another square to swap, or off the board to send it back.
 - Keyboard: type to fill the highlighted square, Backspace to remove, arrow keys to move, Enter to submit.
-- Pick the word length with the **4 · 5 · 6** switch. Bigger boards have more letters to place (8, 12 or 16) and more hints (6, 9 or 12).
+- Pick the word length with the **4 · 5 · 6** switch. Bigger boards have more letters to place (8, 12 or 16).
 - Scoring is Wordle-style: solve it with as few hints as possible. Time and wrong guesses are shown on the result screen. A wrong submit only says it's wrong, not which words are right.
-- Hint types (temporary, to find out which one feels best; pick one under **?**): a random letter, the most useful letter (the next letter of the word with the most possible answers), a clue (the definition of the word with the highlighted square, shown inside the frame), or a word check (marks which complete words are right; there is no submit button, a full and right board wins by itself).
+- Two kinds of hints, four of each: **Clue** shows what a word means (inside the frame), **Letter** reveals a word's 3rd letter. Both go to the word with the highlighted square.
 - **Daily** gives everyone the same puzzle each day, one per word length, each with its own streak and stats. **Archive** is a month calendar of every past daily (doesn't count for the streak). **Practice** gives random puzzles.
 - Share sends a spoiler-free emoji summary plus a link. Whoever opens the link plays the same puzzle and sees your hints and time to beat.
 - After the first visit the game works offline and can be added to the home screen.
@@ -67,7 +67,7 @@ npm run definitions
 npm test
 ```
 
-Definitions shown on the result screen come from `src/data/<n>/definitions.json`, built by `npm run definitions` (`scripts/build-definitions.mjs`) from WordNet. Words like ASKED or HAVING are shown via their base form ("past tense of ask: ..."). To fix a definition or add one WordNet doesn't have, edit `scripts/words/definition-overrides.json` and run it again. Run it after `npm run puzzles` too: it fails if a puzzle word has no definition.
+Clues and the definitions on the result screen come from `src/data/<n>/definitions.json`, built by `npm run definitions` (`scripts/build-definitions.mjs`) from WordNet plus `scripts/words/definition-overrides.json`. Every puzzle word was reviewed with an LLM: when WordNet's definition was a rare meaning (COVERT "a flock of coots"), jargon, or gave the word away, it was replaced by a short one in the overrides file. To fix a clue, edit that file and run `npm run definitions`. Run it after `npm run puzzles` too: it fails if a puzzle word has no definition or a clue contains its own word.
 
 Regenerating changes which puzzle belongs to which day, so only do it before a length goes live, or accept that past days change.
 

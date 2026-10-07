@@ -117,8 +117,7 @@ describe("stats", () => {
   });
 
   it("has a hint bar for every possible hint count", () => {
-    expect(emptyStats(4).hintDistribution).toHaveLength(7);
-    expect(emptyStats(6).hintDistribution).toHaveLength(13);
+    expect(emptyStats().hintDistribution).toHaveLength(9);
   });
 
   it("keeps the first result of a day", () => {
