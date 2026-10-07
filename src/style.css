@@ -425,6 +425,16 @@ html[data-size="6"] {
   box-shadow: 0 0 0.75rem rgba(244, 217, 150, 0.55);
 }
 
+/* The word a clue will explain: one outline around all of its squares */
+.word-outline {
+  margin: -0.3125rem;
+  border: 0.1875rem solid var(--brass-light);
+  border-radius: calc(var(--radius) + 0.3125rem);
+  box-shadow: 0 0 0.75rem rgba(244, 217, 150, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .cell.drop-target {
   transform: scale(1.06);
   border: 0.1875rem solid var(--brass);

@@ -97,10 +97,16 @@ test("hovering a hint button shows where it goes", async ({ page }, info) => {
   await expect(page.locator(".cell.preview")).toHaveCount(1);
   await expect(cell(page, 6)).toHaveClass(/preview/); // its 3rd letter
   await page.locator("#clue-button").hover();
-  await expect(page.locator(".cell.preview")).toHaveCount(4);
-  await expect(cell(page, 8)).toHaveClass(/preview/);
-  await page.mouse.move(0, 0);
   await expect(page.locator(".cell.preview")).toHaveCount(0);
+  // One outline around the whole left word: from the top-left corner down to the bottom-left one.
+  const outline = (await page.locator(".word-outline").boundingBox())!;
+  const top = (await cell(page, 0).boundingBox())!;
+  const bottom = (await cell(page, 8).boundingBox())!;
+  expect(outline.y).toBeLessThan(top.y);
+  expect(outline.y + outline.height).toBeGreaterThan(bottom.y + bottom.height);
+  expect(outline.width).toBeLessThan(top.width * 1.5);
+  await page.mouse.move(0, 0);
+  await expect(page.locator(".word-outline")).toBeHidden();
 });
 
 test("a hint on the highlighted square moves the highlight on", async ({ page }) => {

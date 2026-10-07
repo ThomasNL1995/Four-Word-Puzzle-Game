@@ -125,6 +125,8 @@ let trayKey = "";
 let boardSize = 0;
 let cellEls: HTMLElement[] = [];
 let cluesEl: HTMLElement | null = null;
+/** One outline around a whole word, shown while hovering the clue button. */
+let wordOutlineEl: HTMLElement | null = null;
 /** On the small 4-letter board one clue shows at a time: this one, unless the highlighted square's word has a clue. */
 let clueShown: LineName | null = null;
 /** What the clue panel shows now; it is only rebuilt when this changes (a rebuild mid-click loses the click). */
@@ -191,7 +193,10 @@ function buildBoard() {
   cluesEl.className = "clues";
   cluesEl.setAttribute("aria-live", "polite");
   cluesEl.style.gridArea = `2 / 2 / ${size} / ${size}`;
-  el.board.replaceChildren(...cellEls, cluesEl);
+  wordOutlineEl = document.createElement("div");
+  wordOutlineEl.className = "word-outline";
+  wordOutlineEl.hidden = true;
+  el.board.replaceChildren(...cellEls, cluesEl, wordOutlineEl);
   trayKey = "";
 }
 
@@ -388,14 +393,20 @@ function render() {
   const playing = state.status === "playing";
 
   // Hovering a hint button shows where it goes: the square a letter fills, or the word a clue explains.
-  const previewCells = new Set<number>();
-  if (playing && hintPreview) {
-    const preferred = lineOfCell(cursor);
-    const line = hintPreview === "clue" ? clueLine(state, preferred) : letterHintLine(state, preferred);
-    if (line) {
-      const cells = boardLayout(state).lines[line];
-      (hintPreview === "clue" ? cells : [cells[2]]).forEach((c) => previewCells.add(c));
-    }
+  const preferred = lineOfCell(cursor);
+  const letterLine = playing && hintPreview === "letter" ? letterHintLine(state, preferred) : null;
+  const previewCell = letterLine ? boardLayout(state).lines[letterLine][2] : null;
+  const outlineLine = playing && hintPreview === "clue" ? clueLine(state, preferred) : null;
+  if (wordOutlineEl) {
+    wordOutlineEl.hidden = !outlineLine;
+    const n = size;
+    const areas: Record<LineName, string> = {
+      top: `1 / 1 / 2 / ${n + 1}`,
+      bottom: `${n} / 1 / ${n + 1} / ${n + 1}`,
+      left: `1 / 1 / ${n + 1} / 2`,
+      right: `1 / ${n} / ${n + 1} / ${n + 1}`,
+    };
+    if (outlineLine) wordOutlineEl.style.gridArea = areas[outlineLine];
   }
 
   cellEls.forEach((div, cell) => {
@@ -408,7 +419,7 @@ function render() {
     div.classList.toggle("filled", tile !== null);
     div.classList.toggle("editable", isEditable(state, cell));
     div.classList.toggle("cursor", playing && cell === cursor);
-    div.classList.toggle("preview", previewCells.has(cell));
+    div.classList.toggle("preview", cell === previewCell);
     if (tile !== null && !hinted && playing) div.dataset.tile = String(tile);
     else delete div.dataset.tile;
     div.setAttribute("aria-label", `${letters[cell] || "empty"}${corner ? ", given" : hinted ? ", hint" : ""}`);
