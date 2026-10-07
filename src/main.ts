@@ -776,23 +776,28 @@ enablePointerInput({
 
 // ---------- Input: keyboard ----------
 
+/**
+ * Arrow keys: the next square straight in that direction. When there is none (the way to a
+ * crossing word is blocked by a corner), the nearest square in that direction, so the
+ * cursor can go all around the frame.
+ */
 function moveCursor(dr: number, dc: number) {
   const { editable, positions } = boardLayout(state);
   if (cursor === null) {
     cursor = firstEmptyCell() ?? editable.find((c) => isEditable(state, c)) ?? null;
     return;
   }
-  let [r, c] = positions[cursor];
-  for (;;) {
-    r += dr;
-    c += dc;
-    if (r < 0 || r >= size || c < 0 || c >= size) return;
-    const cell = positions.findIndex(([pr, pc]) => pr === r && pc === c);
-    if (cell !== -1 && isEditable(state, cell)) {
-      cursor = cell;
-      return;
-    }
+  const [r, c] = positions[cursor];
+  let best: { cell: number; side: number; ahead: number } | null = null;
+  for (const cell of editable) {
+    if (!isEditable(state, cell)) continue;
+    const [pr, pc] = positions[cell];
+    const ahead = (pr - r) * dr + (pc - c) * dc; // distance in the arrow's direction
+    const side = Math.abs((pr - r) * dc) + Math.abs((pc - c) * dr); // distance sideways
+    if (ahead <= 0) continue;
+    if (!best || side < best.side || (side === best.side && ahead < best.ahead)) best = { cell, side, ahead };
   }
+  if (best) cursor = best.cell;
 }
 
 /** The squares of a word that can still be filled, in reading direction (down for left and right). */

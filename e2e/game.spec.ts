@@ -119,6 +119,25 @@ test("typing follows the direction of the word", async ({ page }) => {
   await expect(page.locator(".cell.cursor")).toHaveAttribute("data-cell", "4");
 });
 
+test("arrow keys go all around the frame", async ({ page }) => {
+  await openGame(page);
+  const cursor = page.locator(".cell.cursor");
+  // 4 letters: top 1 2, left 4 6, right 5 7, bottom 9 10.
+  await cell(page, 1).click();
+  for (const [key, expected] of [
+    ["ArrowLeft", 4], // around the top-left corner, onto the left word
+    ["ArrowUp", 1], // and back
+    ["ArrowRight", 2],
+    ["ArrowRight", 5], // around the top-right corner
+    ["ArrowDown", 7],
+    ["ArrowLeft", 6], // straight across the middle
+    ["ArrowDown", 9], // around the bottom-left corner
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(cursor).toHaveAttribute("data-cell", String(expected));
+  }
+});
+
 for (const size of [5, 6]) {
   test(`play the ${size}-letter daily`, async ({ page }) => {
     await openGame(page);
