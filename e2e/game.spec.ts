@@ -208,6 +208,17 @@ test("archive: play a past puzzle without touching the streak", async ({ page })
   await expect(page.locator("#stat-extra")).toContainText("Past puzzles solved: 1");
 });
 
+test("archive: switching word length stays on the same past day", async ({ page }) => {
+  await openGame(page, { date: new Date(2026, 9, 8, 12) });
+  await page.locator("#mode-archive").click();
+  await page.locator('.archive-day[data-day="1"]').click();
+  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await page.locator('[data-size-choice="5"]').click();
+  await expect(page.locator(".cell")).toHaveCount(16);
+  await expect(page.locator("#puzzle-label")).toHaveText("#1");
+  await expect(page.locator("#mode-archive")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("archive: months a year later", async ({ page }) => {
   await openGame(page, { date: new Date(2027, 9, 7, 12) });
   await page.locator("#mode-archive").click();

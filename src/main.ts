@@ -967,7 +967,9 @@ el.sizeButtons.forEach((button) =>
     const n = Number(button.dataset.sizeChoice);
     if (n === size) return;
     leaveChallenge();
+    // Stay in the same mode: practice, the same past day in the archive, or the daily.
     if (mode === "practice") startPractice(n);
+    else if (mode === "archive") startArchive(gameId, n);
     else startDaily(n);
   })
 );
